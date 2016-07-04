@@ -13,9 +13,28 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
   <template>
     <style include="shared-styles">
+      @import "theme.css";
       .user-menu{
         background-color:var(--things-secondary-background-color);
         padding:5px;
+      }
+      .flex-horizontal-with-ratios {
+      @apply(--layout-horizontal);
+      }
+      .flexchild {
+      @apply(--layout-flex);
+      }
+      .flex2child {
+      @apply(--layout-flex-2);
+      }
+      .flex3child {
+      @apply(--layout-flex-3);
+      }
+      .flex4child {
+      @apply(--layout-flex-4);
+      }
+      .flex5child {
+      @apply(--layout-flex-5);
       }
       things-logout::shadow paper-icon-button{
         @apply(--things-small-icon);
@@ -23,14 +42,13 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         margin-top:1px;margin-right:-37px;
       }
       div.flex-horizontal-with-ratios{
-        @apply(--layout-horizontal);
         height:100%;
       }
       iron-pages {
-        @apply(--layout-vertical);
+        @apply(--layout-vertical)
       }
       iron-pages * {
-        @apply(--layout-flex);
+        @apply(--layout-flex)
       }
     </style>
     
@@ -95,20 +113,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         <!-- Main Content -->
         <div class="container flex-horizontal-with-ratios">
           <iron-pages attr-for-selected="data-route" selected="{{route}}" class="content flex5child" id="_content_">
-            <!-- login page -->
-            <things-login 
-              data-route="login"
-              route ="{{route}}"
-              title="Things"
-              login-path="login"
-              content-type="application/x-www-form-urlencoded"
-              success-route="/"
-              username-input-label="ID"
-              password-input-label="Password"
-              submit-label = "sign_up"
-              Reset-label = "Reset">
-              <img avatar src="https://maps.gstatic.com/tactile/pane/default_geocode-1x.png"/>
-            </things-login>
           </iron-pages>
           <things-recent-page class="flexchild"></things-recent-page>
         </div>

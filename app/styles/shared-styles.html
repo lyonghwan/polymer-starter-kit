@@ -13,7 +13,10 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 <dom-module id="shared-styles">
   <template>
     <style>
-
+      ::-webkit-scrollbar {width:5px;}
+      ::-webkit-scrollbar-track {background-color:transparent;}
+      ::-webkit-scrollbar-thumb {background-color:rgba(0,0,0,.2);}
+      ::-webkit-scrollbar-thumb:hover {background-color:#49a8df;}
       .flexchild {
           @apply(--layout-flex);
       }
