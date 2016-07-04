@@ -1,0 +1,204 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../../bower_components/iron-image/iron-image.html">
+<link rel="import" href="../../../bower_components/iron-scroll-target-behavior/iron-scroll-target-behavior.html">
+<link rel="import" href="../../../bower_components/iron-resizable-behavior/iron-resizable-behavior.html">
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+<dom-module id="things-wip-routing-detail-scrollable">
+    <template>
+        <style>
+        .container {
+            @apply(--layout-horizontal);
+        }
+        
+        #information {
+            @apply(--things-wip-routing);
+        }
+        
+        #information:before {
+            @apply(--things-wip-routing-icon);
+            background: url(/images/icon-routing.png) no-repeat;
+        }
+        
+        #information.ASSY:before {
+            background-position: 50% -50px;
+        }
+        
+        #information.INV:before {
+            background-position: 50% -150px;
+        }
+        
+        #information.PACK:before {
+            background-position: 50% -250px;
+        }
+        
+        #information.SMT:before {
+            background-position: 50% -350px;
+        }
+        
+        #information.STD:before {
+            background-position: 50% -450px;
+        }
+        
+        #information.TEST:before {
+            background-position: 50% -550px;
+        }
+        
+        #information strong {
+            display: block;
+            font-size: 14px;
+        }
+        
+        #information span {
+            color: var(--things-focus-background-color);
+            font-weight: 800;
+        }
+        
+        #information .icon-arrow {
+            @apply(--things-wip-routing-arrow);
+            background: url(/images/icon-arrow-right.png) no-repeat;
+        }
+        </style>
+        <div id="scrollable-element" class="container">
+            <template id="operRepeat" is="dom-repeat" items="[[items]]" class="layout vertical">
+                <div id="information" class$="[[item.operation.oper_type]]">
+                    <strong hidden="[[item.arrow]]">[[item.operation.name]]</strong> [[item.input_qty]] / <span>[[item.actual_qty]]</span>
+                    <div class="icon-arrow"></div>
+                </div>
+            </template>
+        </div>
+    </template>
+    <script>
+    Polymer({
+        is: 'things-wip-routing-detail-scrollable',
+
+        behaviors: [
+            Polymer.IronScrollTargetBehavior,
+            Polymer.IronResizableBehavior
+        ],
+
+        /**
+         * test data 하드코딩
+         * TODO : routing ajax call & data mapping
+         */
+        properties: {
+
+            /**
+             * things-wip-routing-detail에서 items를 받는다.
+             */
+            items: {
+                type: Object
+            },
+
+            /**
+             * x 축 scroll bar의 현재 값
+             */
+            xScrollLeft: {
+                type: Number,
+                readOnly: true,
+                value: 50
+            },
+
+            /**
+             * calcMoveLength()를 통해 산출되는 클릭당 이동 픽셀수 
+             */
+            movePosition: {
+                type: Number
+            },
+
+            /**
+             * information을 보여줄지 여부를 결정 합니다.
+             */
+            showInfo: {
+                type: Boolean,
+                value: false
+            },
+
+            scrollToIndex: {
+            	type: Number,
+            	value: 4
+            },
+            
+            x: {
+            	type: Number
+            }
+        },
+	    
+	    // listeners: {
+	    //   'iron-resize': '_onIronResize'
+	    // },
+
+        ready: function(){
+            this.$.operRepeat.addEventListener("dom-change", function(event){
+            	this.notifyResize();
+            }.bind(this));
+            // this.async(this.notifyResize, 1);
+        },
+        
+        /**
+         * Runs on every scroll event. Consumer of this behavior may override this method.
+         */
+        attached: function() {
+            // this._setXScrollLeft(this._scrollLeft);
+        },
+
+        /**
+         * override to set xscroll value
+         */
+        _scrollHandler: function() {
+            this._setXScrollLeft(this._scrollLeft);
+        },
+
+        /**
+         * 버튼 클릭당 이동할 픽셀 수를 계산
+         */
+        calcMoveLength: function() {
+        	
+        	this.domList= Polymer.dom(this.$['scrollable-element']).querySelectorAll('#information');
+
+        	var targetElement = this.domList[this.scrollToIndex];
+            this.movePosition = targetElement.offsetLeft-targetElement.clientWidth/2;
+        },
+
+        /**
+         * 왼쪽으로 이동
+         */
+        moveLeft: function() {
+        	if(this.scrollToIndex<=this.domList.length && this.movePosition<=this.x)
+        	{
+        		this.scrollToIndex++;
+        	};
+        	this.calcMoveLength(this.scrollToIndex);
+            this.scroll(this.movePosition, 0);
+        },
+
+        /**
+         * 오른쪽으로 이동
+         */
+        moveRight: function() {
+        	if(this.scrollToIndex>0)
+        	{
+        		this.scrollToIndex--;
+        	};
+        	this.calcMoveLength(this.scrollToIndex);
+            this.scroll(this.movePosition, 0);
+        },
+
+	   // parent : function() {
+	   //    if (this.parentNode.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
+	   //      return this.parentNode.host;
+	   //    }
+	   //    return this.parentNode;
+	   //  },
+
+	    // _onIronResize: function() {
+	    // 	if(this.items && this.items.length > 0) {
+		   //    this.x = Math.floor(this.parent.offsetWidth);
+		   //    this.y = 0;
+		   //    this.translate3d(this.x + 'px', this.y + 'px', 0);
+		   //    this.calcMoveLength(this.scrollToIndex);
+		   //    this.scroll(this.movePosition, 0);
+	    // 	}
+	    // }
+    });
+    </script>
+</dom-module>

@@ -1,0 +1,284 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="./things-term-common-behavior.html">
+
+<script>
+
+window.Things = window.Things || {};
+
+/**
+ * Lot 기반 Transaction Behavior
+ *
+ * @polymerBehavior Things.LotBasedTransactionBehavior
+ */
+Things.LotBasedTransactionBehaviorImpl = {
+
+	properties: {
+		/**
+		 * 메뉴 정보
+		 */
+		menuInfo: {
+			type: Object
+		},
+
+		/**
+		 * 라우팅 정보
+		 */
+		dataRoute: {
+			type: String
+		},
+
+		/**
+		 * 트랜잭션 명 
+		 */
+		transaction: {
+			type: String
+		},
+
+		/**
+		 * 트랜잭션 URL 
+		 */
+		transactionUrl : {
+			type: String,
+			computed : '_computeTransactionUrl(transaction)'
+		},
+
+		/**
+		 * 오더
+		 */
+		order: {
+			type: Object,
+			notify: true
+		},
+
+		/**
+		 * 오더 아이디
+		 */
+		orderId: {
+			type: String
+		},
+
+		/**
+		 * 공정
+		 */
+		operation: {
+			type: Object
+		},
+
+		/**
+		 * 공정 아이디
+		 */
+		operationId: {
+			type: String
+		},
+
+		/**
+		 * Lot
+		 */
+		lot: {
+			type: Object
+		},
+
+		/**
+		 * Latest Lot List를 조회하기 위한 검색 조건
+		 */
+		latestLotQueryFields: {
+			type: Array
+		},
+
+		/**
+		 * Latest Lot List를 조회하기 위한 소팅 조건
+		 */
+		lastestLotSortFields: {
+			type: Array,
+			value: function() {
+				return [ { field : 'updated_at', ascending: true } ];
+			}
+		},
+
+		/**
+		* Form 버튼 
+		*/
+		buttons: {
+			type: Array,
+			value: function() {
+				return [ {
+				id: 'search-btn',
+					text: 'search'
+				}, {
+					id: 'process-btn',
+					text: 'process'
+				}, {
+					id: 'reset-btn',
+					text: 'reset'
+				} ];
+			}
+		}
+	},
+
+	observers: [
+		'dataRouteChanged(dataRoute)',
+		'orderChanged(globals.order)',
+		'operationChanged(globals.operation)',
+		'lotChanged(lot)'
+	],
+
+	listeners: {
+		'validate-lot.things-ajax-error' : 'validationError',
+		'search-btn-tap' : 'validateLot',
+		'reset-btn-tap' : 'resetForm'
+	},
+
+	/**
+	 * dataRoute가 변경되었을 경우 
+	 *
+	 * @param {String} dataRoute
+	 */
+	dataRouteChanged: function(dataRoute) {
+		if(dataRoute == this.menuInfo.routing) {
+			if(this.globals) {
+				this.order = this.globals.order;
+				this.orderId = this.order ? this.order.id : '';
+				this.operation = this.globals.operation;
+				this.operationId = this.operation ? this.operation.id : '';
+			}
+		}
+	},
+
+	/**
+	 * Order 변경시 
+	 *
+	 * @param {Object} order
+	 */
+	orderChanged: function(order) {
+		this.order = order;
+		this.orderId = (order && order.id) ? order.id : '';
+	},
+
+	/**
+	 * Operation 변경시 
+	 *
+	 * @param {Object} operation
+	 */
+	operationChanged: function(operation) {
+		this.operation = operation;
+		this.operationId = (operation && operation.id) ? operation.id : '';
+	},
+
+	/**
+	 * Check Order & Operation 
+	 */
+	checkOrderOperation: function() {
+    if(!this.orderId) {
+      this.openInfoMsg({ 
+        title : 'Setting Error!', 
+        text : Things.DataGlobal.t('error.SHOULD_NOT_BE_EMPTY', {value : Things.DataGlobal.t('label.work_order')}), 
+        type : 'info', 
+        timer : 10000 
+      });
+
+      return false;
+    }
+
+    if(!this.operationId) {
+      this.openInfoMsg({ 
+        title : 'Setting Error!', 
+        text : Things.DataGlobal.t('error.SHOULD_NOT_BE_EMPTY', {value : Things.DataGlobal.t('label.operation')}), 
+        type : 'info', 
+        timer : 10000 
+      });
+
+      return false;
+    }
+
+    return true;
+	},
+
+	/**
+	 * transaction이 변경되었을 경우 
+	 *
+	 * @param {String} transaction
+	 */
+	_computeTransactionUrl: function(transaction) {
+		return 'lot_trxs/' + transaction + '/transaction';
+	},
+
+	/** 
+	 * Find && Validate Lot 
+	 *
+	 * @param {Object} event
+	 */
+	validateLot: function(event) {
+		if(!this.checkOrderOperation()) return;
+
+		var lotNo = this.getLotNo();
+		var validateAjax = this.getValidateLotService();
+
+		validateAjax.body = {
+			lot_name : lotNo,
+			work_order_id : this.orderId,
+			transaction : this.transaction
+		};
+
+		validateAjax.generateRequest();
+	},
+
+	/**
+	 * Refresh Latest Lot List
+	 */
+	refreshLatestLots: function() {
+		if(!this.checkOrderOperation()) return;
+		
+		this.getLatestLotGrid().refreshData();
+	},
+
+	/**
+	 * Reset Form 
+	 *
+	 * @param {Object} event
+	 */
+	resetForm: function(event) {
+		var forms = this.getForms();
+		if(!forms) return;
+		forms.forEach(function(form) { form.getForm().resetMyForm(); }); 
+	},
+
+	/**
+	 * Lot 조회시
+	 *
+	 * @param {Object} lot
+	 */
+	lotChanged: function(lot) {
+		if(lot.error_id) {
+				this.openInfoMsg({ title : lot.error_id, text : lot.msg, type : 'info', timer : 10000 });
+		} else {
+			if(lot.operation && lot.operation.id != this.operationId) {
+				this.openInfoMsg({ 
+					title : 'Validation Error!', 
+					text : 'Mismatch Current Operation and Lot Operation', 
+					type : 'info', 
+					timer : 10000 });
+			} else {
+				this.getLotInfoForm().getForm().setFormData(lot);
+			}
+		}
+	},
+
+	/**
+ 	 * 트랜잭션 에러시 
+	 *
+	 * @param {Object} event
+	 */
+	validationError: function(event) {
+		event.cancelBubble = true;
+		var response = event.detail.request.xhr.response;
+		this.openInfoMsg({ title : 'Validation Error!', text : response.msg, type : 'info', timer : 10000 });
+	}
+};
+
+Things.LotBasedTransactionBehavior = [
+	Things.LotBasedTransactionBehaviorImpl,
+	Things.TermCommonBehavior
+];
+
+</script>

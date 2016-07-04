@@ -1,0 +1,150 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../bower_components/paper-card/paper-card.html">
+
+<link rel="import" href="./things-layout-behavior.html">
+
+<!--
+	상하 1:1 분할 하단 3분할 레이아웃
+-->
+
+<dom-module id="things-layout-hephaestus">
+	<template>
+		<style>
+			:host {
+				display: inline-block;
+				@apply(--layout-vertical);
+			}
+			paper-card {
+			    background-color:transparent;
+			}
+			#top {
+				@apply(--layout-flex);
+				@apply(--layout-vertical);
+			}
+
+			#bottom {
+				@apply(--layout-flex);
+				@apply(--layout-horizontal);
+			}
+
+			#bottomLeft {
+				@apply(--layout-flex);
+				@apply(--layout-vertical);
+			}
+
+			#bottomCenter {
+				@apply(--layout-flex);
+				@apply(--layout-vertical);				
+			}
+
+			#bottomRight {
+				@apply(--layout-flex);
+				@apply(--layout-vertical);				
+			}
+
+			.layout-content {
+				@apply(--layout-vertical);
+				@apply(--layout-flex);
+				overflow: auto;
+			}	
+
+			.subtitle:before {
+				content: '';
+				@apply(--things-subtitle-icon);
+			}
+
+			.subtitle {
+				@apply(--things-default-padding);
+				@apply(--things-subtitle);
+			}
+		</style>
+
+    <!-- top -->
+		<div id="top">
+			<span class="subtitle">[[topContentTitle]]</span>
+			<div id="topContent" class="layout-content">
+				<content select="[top]"></content>
+			</div>
+		</div>
+
+		<!-- bottom -->
+  	<div id="bottom">
+  		<!-- bottom left -->
+  		<paper-card id="bottomLeft" elevation="1">
+				<span class="subtitle">[[bottomLeftContentTitle]]</span>
+				<div id="bottomLeftContent" class="layout-content">
+					<content select="[bottom-left]"></content>
+				</div>
+			</paper-card>
+
+			<!-- bottom center -->
+			<paper-card id="bottomCenter" elevation="1">
+				<span class="subtitle">[[bottomCenterContentTitle]]</span>
+				<div id="bottomCenterContent" class="layout-content">
+					<content select="[bottom-center]"></content>
+				</div>
+			</paper-card>
+
+			<!-- bottom right -->
+			<paper-card id="bottomRight" elevation="1">
+				<span class="subtitle">[[bottomRightContentTitle]]</span>
+				<div id="bottomRightContent" class="layout-content">
+					<content select="[bottom-right]"></content>
+				</div>
+			</paper-card>
+		</div>			
+	</template>
+
+	<script>
+		Polymer({
+			is: 'things-layout-hephaestus',
+
+			properties: {
+
+				topContentTitle: {
+					type: String,
+					value: 'topContent'
+				},
+				
+				bottomLeftContentTitle: {
+					type: String,
+					value: 'bottomLeftContent'
+				},
+
+				bottomCenterContentTitle: {
+					type: String,
+					value: 'bottomCenterContent'
+				},
+
+				bottomRightContentTitle: {
+					type: String,
+					value: 'bottomRightContent'
+				},
+			},
+
+			behaviors: [
+				Things.LayoutBehavior
+			],
+
+			listeners: {
+				'sections-configured' : 'setupLayoutClass'
+			},
+
+			/**
+			* Section이 모두 추가된 후 Layout Class를 설정한다.
+			*
+			* @param {Object} e sections-configured
+			*/
+			setupLayoutClass: function(e) {
+				// TODO
+				// if(!this.sections || this.sections.length == 0) return;
+
+				// if(this.sections['topContent'])
+				// 	this.sections['topContent'].setAttribute('class', 'flex');
+
+				// if(this.sections['bottomContent'])
+				// 	this.sections['bottomContent'].setAttribute('class', 'flex');
+			}
+		});
+	</script>
+</dom-module>

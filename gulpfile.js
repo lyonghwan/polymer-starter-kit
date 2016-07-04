@@ -170,6 +170,7 @@ gulp.task('cache-config', function(callback) {
 
   glob([
     'index.html',
+    'index_oi.html',
     './',
     'bower_components/webcomponentsjs/webcomponents-lite.min.js',
     '{elements,scripts,styles}/**/*.*'],
@@ -200,6 +201,8 @@ gulp.task('serve', ['styles'], function() {
     port: 5000,
     notify: false,
     logPrefix: 'PSK',
+    host:'xmes.hatiolab.com',
+    open:'external',
     snippetOptions: {
       rule: {
         match: '<span id="browser-sync-binding"></span>',
@@ -230,6 +233,8 @@ gulp.task('serve:dist', ['default'], function() {
     port: 5001,
     notify: false,
     logPrefix: 'PSK',
+    host:'xmes.hatiolab.com',
+    open:'external',
     snippetOptions: {
       rule: {
         match: '<span id="browser-sync-binding"></span>',

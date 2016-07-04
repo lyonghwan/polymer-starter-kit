@@ -1,0 +1,73 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../bower_components/things-meta/things-grid-meta-behavior.html">
+
+<script>
+
+window.Things = window.Things || {};
+
+/**
+ * 구성하고자 하는 메뉴 화면 구성을 위해 메타 데이터를 조회하여 모델 정보를 제공하는 Behavior
+ * 화면의 메타 데이터를 조회하는 URL 구성과 메타 데이터를 받은 후 그리드에 필요한 모델 정보를 제공한다.
+ *
+ * @polymerBehavior Things.MenuBasedGridMetaBehavior
+ */
+Things.MenuBasedGridMetaBehaviorImpl = {
+
+	properties: {
+		/**
+		 * 메뉴 ID
+		 */
+		menuId: {
+			type: String
+		},
+
+		/**
+		 * 화면 구성을 위해 필요한 메뉴 메타 데이터를 조회하기 위한 URL
+		 */
+		menuMetaUrl: {
+			type: String,
+			computed: '_computeMenuMetaUrl(menuId)'
+		},		
+
+		/**
+		 * Menu meta data - gridModel, gridColumns, buttons 등을 파싱한다. 
+		 */
+		metaData: {
+			type: Array,
+			observer: 'parseMetaData'
+		}
+	},
+
+	/**
+	 * menuId로 부터 Menu Meta URL을 생성
+	 *
+	 * @param {String} menuId
+	 * @return {String} Get Menu Meta URL
+	 */
+	_computeMenuMetaUrl: function(menuId) {
+		return 'menus/' + menuId + '/menu_meta';
+	},
+
+	/**
+	 * meta data를 파싱한다.
+	 *
+	 * @param {Array} metaData
+	 */
+	parseMetaData: function(metaData) {
+		if(!metaData || metaData.length == 0) return;
+
+		// 1. Parse Grid Models - grid form
+		this.gridModel = this._parseGridModel(metaData.columns);
+		// 2. Parse Grid Columns - grid form
+		this.gridColumns = this._parseGridColumns(metaData.columns);
+	}	
+
+};
+
+Things.MenuBasedGridMetaBehavior = [
+	Things.MenuBasedGridMetaBehaviorImpl,
+	Things.GridMetaBehavior
+];
+
+</script>

@@ -1,0 +1,445 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+
+<link rel="import" href="../../things-layout-view/things-layout-demeter.html">
+<link rel="import" href="../../things-meta-view/things-diy-based-grid.html">
+<link rel="import" href="../../things-meta-view/things-diy-based-form.html">
+
+<link rel="import" href="things-term-common-grid.html">
+<link rel="import" href="things-lot-based-transaction-behavior.html">
+
+<!--
+  OI - MOVE LOT 트랜잭션 
+-->
+
+<dom-module id="things-term-oqc">
+  <template>
+    <style>
+      :host {
+        display: block;
+        @apply(--layout-vertical);
+        @apply(--layout-flex);
+      }
+      things-layout-demeter {
+        @apply(--layout-flex);
+      }
+    </style>
+
+    <things-ajax
+      id="validate-lot"
+      resource-action="create"
+      resource-url="lot_trxs/VALIDATE/transaction"
+      last-response="{{lot}}">
+    </things-ajax>
+
+    <things-ajax
+      id="transaction"
+      resource-action="create"
+      resource-url="[[transactionUrl]]">
+    </things-ajax>
+
+    <things-ajax
+    	id="search-lot-group"
+    	resource-action="index"
+    	last-response="{{lotGroup}}">
+  	</things-ajax>
+
+    <things-ajax
+      id="search-exam-items"
+      resource-action="index"
+      last-response="{{examItems}}">
+    </things-ajax>    
+
+    <things-layout-demeter 
+    	top-left-title="[[inputFormTitle]]"
+      bottom-left-title="[[lotListTitle]]"
+      top-right-title="[[examItemsTitle]]" 
+      bottom-right-title="[[defectItemsTitle]]">
+
+      <things-diy-based-form
+        top-left
+        id="input-form"
+        on-keypress="searchLotGroupPress"
+        class="flex"
+        buttons="[[lotSearchButton]]"
+        diy-form-name="OI-LotSearch">
+      </things-diy-based-form>
+
+      <things-term-common-grid
+        bottom-left
+        id="latest-lot-grid"
+        class="flex"
+        diy-grid-name="OI-OQCLotList"
+        grid-data="[[lotGroup]]"
+        query-fields="[[latestLotQueryFields]]">
+      </things-term-common-grid>
+
+      <things-diy-based-grid 
+        top-right
+        id="exam-items-grid"
+        class="flex"
+        buttons="[[successButton]]"
+        items="[[examItems]]"
+        diy-grid-name="OI-ExamItems">
+      </things-diy-based-grid>
+
+      <things-diy-based-grid
+        bottom-right
+        id="defect-list-grid"
+        class="flex"
+        diy-grid-name="OI-ExamDefectList"
+        items="[[defectItems]]"
+        buttons="[[gridButtons]]">
+      </things-diy-based-grid>
+
+    </things-layout-demeter>
+  </template>
+
+  <script>
+    Polymer({
+      is: 'things-term-oqc',
+      
+      behaviors: [
+        Things.LotBasedTransactionBehavior
+      ],
+
+      properties: {
+
+      	inputFormTitle: {
+      		type: String,
+      		value: function() {
+      			return Things.DataGlobal.t('label.input')
+      		}
+      	},
+
+        /**
+         * Title Of Lot Information
+         */
+        examItemsTitle: {
+          type: String,
+          value: function() {
+            return Things.DataGlobal.t('title.examItems')
+          }
+        },
+
+        /**
+         * Title Of Input
+         */
+        defectItemsTitle: {
+          type: String,
+          value: function() {
+            return Things.DataGlobal.t('title.defectItems')
+          }
+        },
+
+        /**
+         * Title Of Lot List
+         */
+        lotListTitle: {
+          type: String,
+          value: function() {
+            return Things.DataGlobal.t('title.LotList')
+          }
+        },
+
+        lotName: {
+        	type: Number
+        },
+
+        /**
+         * 검사 항목을 transactino 발생 전 까지 담아 놓는 object
+         * 
+         */
+        lotDefectsMap: {
+          type: Object,
+          value: function() {
+            return {};
+          }
+        },        
+
+        prevExamItemId: {
+        	type: String
+        },
+
+        lotSearchButton: {
+        	type: Array,
+        	value: function() {
+        		return [{
+        			id: 'search-btn',
+        			text: 'search'
+        		}]
+        	}
+        },
+
+        successButton: {
+        	type: Array,
+        	value: function() {
+        		return [{
+        			id: 'success-btn',
+        			text: 'success'
+        		}]
+        	}
+        },
+
+        /**
+         * button setting
+         */
+        gridButtons: {
+          type: Array,
+          value: function() {
+            return [{
+              id: 'add-btn',
+              text: 'add'
+            }, {
+              id: 'process-btn',
+              text: 'process'
+            }]
+          }
+        }        
+      },
+
+      observers: [
+        'lotListConditionsChanged(orderId,operationId)'
+      ],
+
+      listeners: {
+      	'latest-lot-grid.things-grid-row-data-select' : 'lotSelected',
+      	'exam-items-grid.things-grid-row-data-select' : 'examItemSelected',
+      	'success-btn-tap' : 'examSuccess',
+        'process-btn-tap' : 'lotTransaction',
+        'transaction.things-ajax-response' : 'transactionResponsed',
+        'things-grid-configured' : 'latestLotGridConfigured',
+        'things-grid-handle-addrow' : 'addDefectRow'
+      },
+
+      /**
+       * Life Cycle - Ready
+       */
+      ready: function() {
+        this.transaction = 'OQC';
+      },
+
+      /**
+       * Latest Lot List 검색 조건 변경시 
+       *
+       * @param {String} orderId
+       * @param {String} operationId
+       */
+      lotListConditionsChanged: function(orderId, operationId) {
+        this.latestLotQueryFields = [ {
+          name: 'work_order_id',
+          value: orderId
+        }, {
+          name: 'operation_id',
+          value: operationId
+        }];
+
+        this.refreshLatestLots();
+      },
+
+      /**
+       * Latest Lot Grid 변경시
+       */
+      latestLotGridConfigured: function(event) {
+        this.refreshLatestLots();
+      },
+
+      /**
+       * Lot Information Form
+       */
+      getLotInfoForm: function() {
+        return this.$['lot-info-form'];
+      },
+
+      /**
+       * Latest Lot List Grid
+       */
+      getLatestLotGrid: function() {
+        return this.$['latest-lot-grid'];
+      },
+
+      /**
+       * Validation Lot Service
+       */
+      getValidateLotService: function() {
+        return this.$['validate-lot'];
+      },
+
+      /**
+       * Transaction Lot Service
+       */
+      getTransactionLotService: function() {
+        return this.$['transaction'];
+      },
+
+      /**
+       * Lot Transaction
+       */
+      lotTransaction: function() {
+        if(!this.prevExamItemId) {
+          return;
+        }
+
+        //현재 선택된 그리드의 데이터를 커밋
+        var grid = this.$['defect-list-grid'].getGrid().getGridObject();
+        try {
+          grid.commit();
+        } catch (e) {
+          console.error(e);
+          return;
+        }
+
+        var dataSet = grid.dataSource();
+        var rowCount = dataSet.rowCount();
+        var items = rowCount == 0 ? [] : dataSet.getRowObjects(0, rowCount);
+        this.lotDefectsMap[this.prevExamItemId] = items;
+        this.defectItems = this.lotDefectsMap[this.prevExamItemId];
+
+        var tranAjax = this.getTransactionLotService();
+        var lotInspectsDs = this.$['exam-items-grid'].getGrid().getGridObject().dataSource();
+        var lotInspects = lotInspectsDs.getRowObjects(0, lotInspectsDs.rowCount());
+        var lotDefects = [];
+
+        for (var i = 0; i < lotInspects.length; i++) {
+          var lotInspect = lotInspects[i];
+          lotInspect.exam_item_id = lotInspect.id;
+          lotInspect.success = true;
+
+          if(lotInspect.failure == 'true') {
+            lotInspect.success = false;
+            var tempArry = this.lotDefectsMap[lotInspect.exam_item_id];
+            tempArry.forEach(function(temp) { lotDefects.push(temp);});
+          }
+
+          delete lotInspect['id'];
+          delete lotInspect['name'];
+          delete lotInspect['exam_type'];
+          delete lotInspect['description'];
+          delete lotInspect['failure'];
+        }
+
+        tranAjax.body = {
+          lot_id: lotData.id,
+          lot_inspects: JSON.stringify(lotInspects),
+          lot_defects: JSON.stringify(lotDefects),
+          current_operation_id: this.operationId,
+          work_order_id: this.orderId
+        };
+
+        tranAjax.generateRequest();
+      },
+
+      /**
+       * 트랜잭션 성공시 
+       *
+       * @param {Object} event
+       */
+      transactionResponsed: function(event) {
+        if(!this.checkTransactionResponse(event)) {
+          return;
+        }
+
+        this.updateLotList()
+        this.refreshLatestLots();
+        this.resetForm();
+        this.$['input-form'].getForm().resetMyForm();
+        this.fire('iron-signal', {name : 'refresh-wip'});
+      },
+
+      searchLotGroupPress: function(event) {
+				var code = event.keyCode;
+        if(code == 13) {
+          this.getLotGroup();
+        }	      	
+      },
+
+      examSuccess: function() {
+      	var lotName = this.lotName;
+      	this.updateLotList(lotName, true);
+      },
+
+      getLotGroup: function() {
+      	var lotGroupAjax = this.$['search-lot-group'];
+      	lotGroupAjax.resourceUrl = '';
+      	lotGroupAjax.generateRequest();
+      },
+
+      /**
+       * lot list에서 row 선택시 실행
+       */
+      lotSelected: function(event) {
+      	this.lotId = event.detail.id;
+      	this.lotName = event.detail.name;
+      	var selectedOperationId = event.detail.operation.id;
+      	var orderId = this.orderId;
+      	var searchExamAjax = this.$['search-exam-items'];
+
+      	searchExamAjax.resourceUrl = 'exam_items/find/' + orderId + '/' + selectedOperationId;
+      	searchExamAjax.generateRequest();
+      },
+
+      examItemSelected: function(event) {
+        var rowId = event.detail.id;
+
+        // 이전에 선택한 row와 현재 선택한 row가 같다면 return
+        if(rowId == this.prevExamItemId) {
+          return;
+        }
+
+        //prevExamItemId가 없으면 현재 선택한 row의 id로 초기화 (row를 처음 클릭했을 시)
+        if(!this.prevExamItemId) {
+          this.prevExamItemId = rowId;
+          return;
+        }
+
+        var grid = this.$['defect-list-grid'].getGrid().getGridObject();
+        grid.commit();
+
+        var dataSet = grid.dataSource();
+        var rowCount = dataSet.rowCount();
+        var items = rowCount == 0 ? [] : dataSet.getRowObjects(0, rowCount);
+        this.lotDefectsMap[this.prevExamItemId] = items;
+        this.defectItems = this.lotDefectsMap[rowId];
+        this.prevExamItemId = rowId;
+      },
+
+      /**
+       * row add event 발생시 실행 row를 추가하면서 exam_items_id와 rank를 초기화 합니다.
+       *
+       * @param {Object} event
+       */
+      addDefectRow: function(event) {
+        event.preventDefault();
+        
+        if(!this.prevExamItemId) {
+          return;
+        }
+        
+        var grid = this.$['defect-list-grid'].getGrid().getGridObject();
+        var dataSet = grid.dataSource();
+        var rowCount = dataSet.rowCount();
+
+        dataSet.insertRow(0, {
+          exam_item_id: this.prevExamItemId,  
+          rank : rowCount + 1,
+          defect_type : '', 
+          defect_code: '', 
+          defect_comment: ''
+        });
+      },
+
+      updateLotList: function(lotName, value) {
+      	var lotGroup = this.lotGroup;
+      	for(var i = 0; i < this.lotGroup.length; i++) {
+      		if(lotName == lotGroup[i].name) {
+      			logGroup[i].exam_result = (value) ? 'S' : 'F';
+      		}
+      	}
+      	this.lotGroup = [];
+      	this.lotGroup = lotGroup;
+      }
+
+    });
+  </script>
+</dom-module>

@@ -1,0 +1,115 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../bower_components/things-form/things-form.html">
+
+<link rel="import" href="things-diy-based-form-behavior.html">
+
+<!--
+리소스 타입 DiyForm 기반 폼 화면,
+외부에서 DiyForm 명만 전달하면 DiyForm 기반으로 폼이 표시된다.
+-->
+
+<dom-module id="things-diy-based-form">
+	<template>
+		<style>
+			:host {
+				display: block;
+			}
+		</style>
+
+		<things-ajax 
+			auto
+			id="diy-form-ajax"
+			method="GET"
+			resource-url="[[diyFormUrl]]"
+			last-response="{{diyForm}}">
+		</things-ajax> 
+
+		<things-ajax 
+			auto
+			id="meta-ajax"
+			method="GET"
+			resource-url="[[formMetaUrl]]"
+			last-response="{{metaData}}">
+		</things-ajax>
+
+		<things-form
+			id="form"
+			form-fields="[[formFields]]"
+			column-count="[[diyForm.columns_per_row]]"
+			resource="[[resource]]"
+			resource-id="[[resourceId]]"
+			buttons="[[buttons]]">
+		</things-form>
+	</template>
+
+	<script>
+		Polymer({
+			is: 'things-diy-based-form',
+
+			behaviors: [
+				Things.DiyBasedFormBehavior
+			],
+
+			properties: {
+				/**
+				 * DiyForm 명
+				 */
+				diyFormName : {
+					type: String
+				},
+
+				/**
+				 * DiyForm을 조회하기 위한 URL
+				 */
+				diyFormUrl: {
+					type: String,
+					computed: '_computeDiyFormUrl(diyFormName)'
+				},
+
+				/**
+				 * Form Submit URL
+				 */
+				submitUrl: {
+					type: String
+				},
+
+				/**
+				 * 버튼 
+				 */
+				buttons: {
+					type: Array,
+					value: []
+				}
+			},
+
+			observers: [
+				'_gridColumnsChanged(gridColumns)'
+			],
+
+			/**
+			 * DiyForm 명이 변경되면 DiyForm 조회 URL을 리턴 
+			 *
+			 * @param {String} diyFormName
+			 */
+			_computeDiyFormUrl: function(diyFormName) {
+				return 'diy_forms/show_by_name?name=' + diyFormName;
+			},
+
+			/**
+			 * things-form을 리턴한다.
+			 */
+			getForm: function() {
+				return this.$.form;
+			},
+
+			/**
+			 * Grid Columns 변경시
+			 */
+			_gridColumnsChanged: function(gridColumns) {
+				this.fire('things-view-columns-grid-meta-changed', gridColumns);
+			}
+		});
+	</script>
+</dom-module>

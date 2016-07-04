@@ -1,0 +1,249 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+
+<link rel="import" href="../../things-layout-view/things-layout-mercury.html">
+<link rel="import" href="../../things-meta-view/things-diy-based-grid.html">
+<link rel="import" href="../../things-meta-view/things-diy-based-form.html">
+
+<link rel="import" href="things-term-common-grid.html">
+<link rel="import" href="things-lot-based-transaction-behavior.html">
+
+<!--
+  OI - MOVE LOT 트랜잭션 
+-->
+
+<dom-module id="things-term-move-lot">
+  <template>
+    <style>
+      :host {
+        display: block;
+        @apply(--layout-vertical);
+        @apply(--layout-flex);
+      }
+      things-layout-mercury {
+        @apply(--layout-flex);
+      }
+    </style>
+
+    <things-ajax
+      id="validate-lot"
+      resource-action="create"
+      resource-url="lot_trxs/VALIDATE/transaction"
+      last-response="{{lot}}">
+    </things-ajax>
+
+    <things-ajax
+      id="transaction"
+      resource-action="create"
+      resource-url="[[transactionUrl]]">
+    </things-ajax>
+
+    <things-layout-mercury 
+      left-top-content-title="[[inputTitle]]" 
+      left-bottom-content-title="[[lotInfoTitle]]" 
+      right-content-title="[[lotListTitle]]">
+      <things-diy-based-form 
+        left-top
+        id="input-form"
+        on-keypress="handleKeyPress"
+        diy-form-name="OI-Move"
+        buttons="[[buttons]]">
+      </things-diy-based-form>
+
+      <things-diy-based-form 
+        left-bottom
+        id="lot-info-form"
+        class="flex"
+        diy-form-name="OI-LotInfo">
+      </things-diy-based-form>
+
+      <things-term-common-grid
+        right
+        id="latest-lot-grid"
+        class="flex"
+        query-fields="[[latestLotQueryFields]]"
+        sort-fields="[[lastestLotSortFields]]">
+      </things-term-common-grid>
+    </things-layout-mercury>
+  </template>
+
+  <script>
+    Polymer({
+      is: 'things-term-move-lot',
+      
+      behaviors: [
+        Things.LotBasedTransactionBehavior
+      ],
+
+      properties: {
+        /**
+         * Title Of Lot Information
+         */
+        lotInfoTitle: {
+          type: String,
+          value: function() {
+            return Things.DataGlobal.t('title.LotInformation')
+          }
+        },
+
+        /**
+         * Title Of Input
+         */
+        inputTitle: {
+          type: String,
+          value: function() {
+            return Things.DataGlobal.t('title.Input')
+          }
+        },
+
+        /**
+         * Title Of Lot List
+         */
+        lotListTitle: {
+          type: String,
+          value: function() {
+            return Things.DataGlobal.t('title.LotList')
+          }
+        },
+
+        lastestLotSortFields: {
+          type: Array,
+          value: function() {
+            return [{field : 'updatedAt', ascending : false}]
+          }
+        }
+      },
+
+      observers: [
+        'lotListConditionsChanged(orderId,operationId)'
+      ],
+
+      listeners: {
+        'process-btn-tap' : 'lotTransaction',
+        'transaction.things-ajax-response' : 'transactionResponsed',
+        'things-grid-configured' : 'latestLotGridConfigured'
+      },
+
+      /**
+       * Life Cycle - Ready
+       */
+      ready: function() {
+        this.transaction = 'MOVE';
+      },
+
+      /**
+       * Latest Lot List 검색 조건 변경시 
+       *
+       * @param {String} orderId
+       * @param {String} operationId
+       */
+      lotListConditionsChanged: function(orderId, operationId) {
+        this.latestLotQueryFields = [ {
+          name: 'work_order_id',
+          value: orderId
+        }, {
+          name: 'operation_id',
+          value: operationId
+        }, {
+          name: 'state',
+          operator: 'in',
+          value: 'FINISH_PROCESS,STORED,PACKED'
+        } ];
+
+        this.refreshLatestLots();
+      },
+
+      /**
+       * Latest Lot Grid 변경시
+       */
+      latestLotGridConfigured: function(event) {
+        this.refreshLatestLots();
+      },
+
+      /**
+       * Form List를 리턴 
+       */
+      getForms: function() {
+        return [this.getLotInfoForm(), this.getInputForm()];
+      },
+
+      /**
+       * Lot Information Form
+       */
+      getLotInfoForm: function() {
+        return this.$['lot-info-form'];
+      },
+
+      /**
+       * Input Form
+       */
+      getInputForm: function() {
+        return this.$['input-form'];
+      },
+
+      /**
+       * Latest Lot List Grid
+       */
+      getLatestLotGrid: function() {
+        return this.$['latest-lot-grid'];
+      },
+
+      /**
+       * Validation Lot Service
+       */
+      getValidateLotService: function() {
+        return this.$['validate-lot'];
+      },
+
+      /**
+       * Transaction Lot Service
+       */
+      getTransactionLotService: function() {
+        return this.$['transaction'];
+      },
+
+      /**
+       * Get Lot No.
+       */
+      getLotNo: function() {
+        var inputData = this.getInputForm().getForm().serializeMyForm();
+        return inputData.name;
+      },
+
+      /**
+       * Lot Transaction
+       */
+      lotTransaction: function() {
+        var inputData = this.getInputForm().getForm().serializeMyForm();
+        var lotData = this.getLotInfoForm().getForm().serializeMyForm();
+        var tranAjax = this.getTransactionLotService();
+
+        tranAjax.body = {
+          lot_id : lotData.id,
+          work_order_id : this.orderId,
+          current_operation_id : this.operationId,
+          next_operation_id : inputData.next_operation_id,
+          comments : inputData.comments
+        };
+
+        tranAjax.generateRequest();
+      },
+
+      /**
+       * 트랜잭션 성공시 
+       *
+       * @param {Object} event
+       */
+      transactionResponsed: function(event) {
+        if(!this.checkTransactionResponse(event)) {
+          return;
+        }
+        
+        this.resetForm();
+        this.refreshLatestLots();
+        this.fire('iron-signal', {name : 'refresh-wip'});
+      }
+    });
+  </script>
+</dom-module>

@@ -1,0 +1,94 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../bower_components/paper-card/paper-card.html">
+
+<link rel="import" href="./things-layout-behavior.html">
+
+<!--
+  상하 1:1 분할 하단 3분할 레이아웃
+-->
+
+<dom-module id="things-layout-hera">
+  <template>
+    <style>
+      :host {
+        display: inline-block;
+        @apply(--layout-horizontal);
+        margin-top:20px;
+      }
+      paper-card {
+          background-color:transparent;
+      }
+      #left {
+        @apply(--layout-flex);
+        @apply(--layout-vertical);
+        margin-right:15px;
+      }
+
+      #right {
+        @apply(--layout-flex);
+        @apply(--layout-vertical);
+      }
+
+      .layout-content {
+        @apply(--layout-vertical);
+        @apply(--layout-flex);
+        overflow: auto;
+      } 
+
+
+      .subtitle:before {
+        content: '';
+        @apply(--things-subtitle-icon);
+      }
+
+      .subtitle {
+        @apply(--things-default-padding);
+        @apply(--things-subtitle);
+      }
+    </style>
+
+    <!-- Left -->
+    <paper-card id="left" elevation="0">
+      <span class="subtitle">[[leftContentTitle]]</span>
+      <div id="leftContent" class="layout-content">
+        <content select="[left]"></content>
+      </div>
+    </paper-card>
+
+    <!-- Right -->
+    <paper-card id="right" elevation="0">
+      <span class="subtitle">[[rightContentTitle]]</span>
+      <div id="rightContent" class="layout-content">
+         <content select="[right]"></content>
+      </div>
+    </paper-card>
+  </template>
+
+  <script>
+    Polymer({
+      is: 'things-layout-hera',
+
+      behaviors: [
+        Things.LayoutBehavior
+      ],
+
+      properties: {
+        /**
+         * Title Of Left Content
+         */
+        leftContentTitle: {
+          type: String,
+          value: 'leftContent'
+        },
+
+        /**
+         * Title Of Right Content
+         */
+        rightContentTitle: {
+          type: String,
+          value: 'rightContent'
+        }
+      }
+    });
+  </script>
+</dom-module>

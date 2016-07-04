@@ -1,0 +1,280 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+
+<link rel="import" href="../../things-layout-view/things-layout-mercury.html">
+<link rel="import" href="../../things-meta-view/things-diy-based-grid.html">
+<link rel="import" href="../../things-meta-view/things-diy-based-form.html">
+
+<link rel="import" href="things-term-common-grid.html">
+<link rel="import" href="things-lot-based-transaction-behavior.html">
+
+<!--
+  OI - Instock 트랜잭션 (입고)
+-->
+
+<dom-module id="things-term-store">
+  <template>
+    <style>
+      :host {
+        display: block;
+        @apply(--layout-vertical);
+        @apply(--layout-flex);
+      }
+      things-layout-mercury {
+        @apply(--layout-flex);
+      }
+    </style>
+
+    <things-ajax
+      id="validate-lot"
+      resource-action="create"
+      resource-url="lot_trxs/VALIDATE/transaction"
+      last-response="{{lot}}">
+    </things-ajax>
+
+    <things-ajax
+      id="transaction"
+      resource-action="create"
+      resource-url="[[transactionUrl]]">
+    </things-ajax>
+
+    <things-ajax
+      id="relation-lots-search"
+      resource-action="index"
+      last-response="{{relationLotList}}">
+    </things-ajax>    
+
+
+    <things-layout-mercury 
+      left-top-content-title="[[packingInfoTitle]]" 
+      left-bottom-content-title="[[packingLotListTitle]]" 
+      right-content-title="[[lotListTitle]]">
+      <things-diy-based-form
+        left-top
+        on-keypress="handleKeyPress"
+        id="lot-info-form"
+        diy-form-name="OI-Store"
+        buttons="[[buttons]]">
+      </things-diy-based-form>
+      
+      <things-diy-based-grid 
+        left-bottom
+        id="lots-grid"
+        class="flex"
+        items="[[relationLotList.items]]"
+        fixed-column-count="0"
+        diy-grid-name="OI-StoreLots">
+      </things-diy-based-grid>
+
+      <things-term-common-grid
+        right
+        id="latest-lot-grid"
+        class="flex"
+        query-fields="[[latestLotQueryFields]]">
+      </things-term-common-grid>
+    </things-layout-mercury>
+  </template>
+
+  <script>
+    Polymer({
+      is: 'things-term-store',
+      
+      behaviors: [
+        Things.LotBasedTransactionBehavior
+      ],
+
+      properties: {
+        /**
+         * Title Of Packing Information
+         */
+        packingInfoTitle: {
+          type: String,
+          value: function() {
+            return Things.DataGlobal.t('label.packing')
+          }
+        },
+
+        /**
+         * Title Of Packing Lot List
+         */
+        packingLotListTitle: {
+          type: String,
+          value: function() {
+            return Things.DataGlobal.t('label.packing_lots')
+          }
+        },
+
+        /**
+         * Title Of Lot List
+         */
+        lotListTitle: {
+          type: String,
+          value: function() {
+            return Things.DataGlobal.t('title.LotList')
+          }
+        },
+
+        relationLotId: {
+          type: String
+        },
+
+        /**
+         * relation Lot List
+         */
+        relationLotList: {
+          type: Object
+        }
+      },
+
+      observers: [
+        'lotListConditionsChanged(orderId,operationId)'
+      ],
+
+      listeners: {
+        'process-btn-tap' : 'lotTransaction',
+        'transaction.things-ajax-response' : 'transactionResponsed',
+        'things-grid-configured' : 'latestLotGridConfigured'
+      },
+
+      /**
+       * Life Cycle - Ready
+       */
+      ready: function() {
+        this.transaction = 'STORE';
+      },
+
+      /**
+       * Latest Lot List 검색 조건 변경시 
+       *
+       * @param {String} orderId
+       * @param {String} operationId
+       */
+      lotListConditionsChanged: function(orderId, operationId) {
+        this.latestLotQueryFields = [ {
+          name: 'work_order_id',
+          value: orderId
+        }, {
+          name: 'operation_id',
+          value: operationId
+        }, {
+          name: 'lot_type',
+          value: 'PACK'
+        }];
+
+        this.refreshLatestLots();
+      },
+
+      /**
+       * Latest Lot Grid 변경시
+       */
+      latestLotGridConfigured: function(event) {
+        this.refreshLatestLots();
+      },
+
+      /**
+       * Form List를 리턴 
+       */
+      getForms: function() {
+        return [this.getLotInfoForm()];
+      },
+
+      /**
+       * Lot Information Form
+       */
+      getLotInfoForm: function() {
+        return this.$['lot-info-form'];
+      },
+
+      /**
+       * Latest Lot List Grid
+       */
+      getLatestLotGrid: function() {
+        return this.$['latest-lot-grid'];
+      },
+
+      /**
+       * Validation Lot Service
+       */
+      getValidateLotService: function() {
+        return this.$['validate-lot'];
+      },
+
+      /**
+       * Transaction Lot Service
+       */
+      getTransactionLotService: function() {
+        return this.$['transaction'];
+      },
+
+      /**
+       * Get Lot No.
+       */
+      getLotNo: function() {
+        var inputData = this.getLotInfoForm().getForm().serializeMyForm();
+        return inputData.name;
+      },      
+
+      /**
+       * Lot Transaction
+       */
+      lotTransaction: function() {
+        var lotInfo = this.getLotInfoForm().getForm().serializeMyForm();
+        var tranAjax = this.getTransactionLotService();
+
+        tranAjax.body = {
+          work_order_id: this.orderId,
+          relation_lot_id: this.relationLotId,
+          current_operation_id: this.operationId,
+          store_id: lotInfo.store_code,
+          store_location_id: lotInfo.store_location_id,
+          store_code: lotInfo.store_code,
+          comments: lotInfo.comments
+        };
+
+        tranAjax.generateRequest();
+      },
+
+      /**
+       * 트랜잭션 성공시 
+       *
+       * @param {Object} event
+       */
+      transactionResponsed: function(event) {
+        if(!this.checkTransactionResponse(event)) {
+          return;
+        }
+        
+        this.resetForm();
+        this.refreshLatestLots();
+        this.fire('iron-signal', {name : 'refresh-wip'});
+      },
+
+      /**
+       * lot 검색시 하위 포장된 lot을 찾아 그리드에 출력합니다.
+       */
+      lotChanged: function(lot) {
+        if(lot.error_id) {
+            this.openInfoMsg({ title : lot.error_id, text : lot.msg, type : 'info', timer : 10000 });
+        } else {
+          if(lot.operation && lot.operation.id != this.operationId) {
+            this.openInfoMsg({ title : 'Validation Error!', text : 'Mismatch Current Operation and Lot Operation', type : 'info', timer : 10000 });
+          } else {
+            this.getLotInfoForm().getForm().setFormData(lot);
+          }
+        }
+        
+        this.relationLotId = lot.relation_lot_id;
+        var relationLotsAjax = this.$['relation-lots-search'];
+
+        relationLotsAjax.resourceUrl = 'lots';
+        relationLotsAjax.queryFields = [{
+          name: 'relation_lot_id',
+          value: lot.id
+        }];
+
+        relationLotsAjax.generateRequest();
+      }
+    });
+  </script>
+</dom-module>

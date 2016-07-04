@@ -1,0 +1,349 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../../bower_components/iron-input/iron-input.html">
+<link rel="import" href="../../../bower_components/iron-form/iron-form.html">
+<link rel="import" href="../../../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../../../bower_components/paper-material/paper-material.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../../bower_components/things-input-field/things-input-field.html">
+<link rel="import" href="../../../bower_components/things-input-field/things-textarea.html">
+
+<!--
+커스텀 서비스의 테스트 화면 
+커스텀 서비스에서는 생성한 서비스 로직의 테스트를 위해 테스트 화면을 제공한다.
+GET / DELETE는  Parameter Input을 나열하는 방식으로 PUT / POST는 JSON 편집하여 호출하는 방식으로 테스트 화면을 지원한다.
+
+Example:
+
+		<things-base-diy-service-detail-test id="diy-test">
+		</things-base-diy-service-detail-test>
+
+@demo demo/index.html
+-->
+
+<dom-module id="things-base-rest-detail-api-test">
+	<template>
+    <style>
+      :host {
+        display: block;
+        @apply(--layout-vertical);
+        @apply(--things-table-padding);
+      }
+      paper-toolbar {
+        background-color:var(--things-white-background-color);
+        height: 50px;
+        @apply(--things-tight-padding);
+      }
+      paper-toolbar::shadow #bottomBar {
+        height: 50px;
+        @apply(--layout-horizontal);
+        @apply(--layout-end-justified);
+        padding: 0 10px;
+      }
+    </style>
+
+		<things-ajax 
+			id="put-resource"
+			method="PUT"
+			content-type="application/json"
+			last-response="{{lastResponse}}">
+		</things-ajax>
+
+		<paper-toolbar>
+			<div class="bottom">
+				<things-button-bar buttons="[[buttons]]"></things-button-bar>
+			</div>
+		</paper-toolbar>
+
+		<br/>
+
+		<form is="iron-form" 
+			id="form" 
+			action="{{action}}"
+			headers="[[headers]]"
+			with-credentials
+			content-type="[[apiContentType]]"
+			method="[[resource.http_method]]"
+			last-response="{{lastResponse}}">
+			
+			<things-input-field 
+				required 
+				id="invoke-url" 
+				name ="invokeUrl" 
+				label="Invoke URL" 
+				value="{{invokeUrl}}">
+			</things-input-field>
+
+			<div id="param-fields" class="layout vertical flex fields"></div>
+
+			<things-textarea id="result" label="Result" rows=4></things-textarea>
+		</form>
+	</template>
+
+	<script>
+		Polymer({
+
+			is: 'things-base-rest-detail-api-test',
+
+			properties: {
+				/**
+				 * Resource
+				 */
+				resource: {
+					type: Object,
+					observer: '_resourceChanged'
+				},
+
+				/**
+				 * Input Parameters
+				 */
+				inputParams: {
+					type: Array,
+					observer: '_inputParamsChanged'
+				},
+
+				/**
+				 * Content Type
+				 */
+				apiContentType: {
+					type: String
+				},
+
+				buttons: {
+					type: Array,
+					value: function() {
+						return [{
+							id: 'invoke-btn',
+							text: 'invoke'
+						}, {
+							id: 'reset-btn',
+							text: 'reset'
+						}];
+					}
+				}
+			},
+			
+			behaviors: [
+				Things.FormBehavior
+			],
+
+			listeners : {				
+				'iron-form-presubmit': '_preSubmitHandler',
+      	'iron-form-response' :'_successResponseHandler',
+      	'iron-form-error' : '_errorResponseHandler',
+				'put-resource.things-ajax-response': '_successResponseHandler',
+				'put-resource.things-ajax-error': '_errorResponseHandler',
+				'invoke-btn-tap' : '_invoke',
+				'reset-btn-tap' : '_resetForm'      	
+			},
+
+			/**
+			 * Submit 전에 전처리
+			 * @param {Event} event
+			 */
+			_preSubmitHandler: function(event) {
+				var form = this.getMyForm();
+				var actionUrl = form.request.url;
+
+				if(actionUrl.indexOf('{id}') >= 0) {
+					actionUrl = actionUrl.substr(0, actionUrl.indexOf('/rest/'));
+					actionUrl += this.invokeUrl;
+					form.request.url = actionUrl;
+				}
+
+				if(this.resource.http_method == 'PUT' || this.resource.http_method == 'POST') {
+					form.request.body = form.request.body.input;
+				}
+			},
+
+			/**
+			 * resource가 변경되었을 경우
+			 * @param {Object} resource
+			 */
+			_resourceChanged: function(resource) {
+				if(resource && resource.url) {
+					var url = resource.url;
+					this.invokeUrl = url;
+					url = url.replace('/rest/', '');
+					this.actionUrl = url;
+
+					var method = resource.http_method;
+					if(method == 'GET' || method == 'get' || method == 'DELETE' || method == 'delete') {
+						this.apiContentType = 'application/x-www-form-urlencoded';
+					} else {
+						this.apiContentType = 'application/json';
+					}
+				}
+
+				this.$.result.value = '';
+			},
+
+			/**
+			 * inputParams가 변경되었을 경우
+			 * @param {Array} inputParams
+			 */
+			_inputParamsChanged: function(inputParams) {
+				var formFields = [];
+
+				if(this.resource.http_method == 'GET' || this.resource.http_method == 'DELETE') {
+					if(inputParams && inputParams.length > 0) {
+						formFields = inputParams.map(function(param) {
+							return { name : param.name, label : 'Parameter : ' + param.name, type : 'text' };
+						});
+					}
+				} else {
+					formFields.push({ id: 'input-json', name : 'input', label: 'Input JSON', type: 'textarea' });
+				}
+
+				this.formFields = formFields;
+			},
+
+			/**
+			 * 리소스 폼 화면을 구성. formFields 정보로 동적으로 폼 하위 엘리먼트를 생성하여 폼을 구성한다. 
+			 */
+			reconfigureMyForm: function() {
+				this._clearFormFields();
+
+				for(index in this.formFields) {
+					var field = this.formFields[index];
+					var newElement = this._createFormElement(field);
+					if(!newElement) continue;
+
+					this.$['param-fields'].appendChild(newElement);
+				}
+			},
+
+			/**
+			 * Clear Parameter element
+			 */
+			_clearFormFields: function() {
+				var children = this.$['param-fields'].childNodes;
+				if(children && children.length > 0) {
+					var childCount = children.length;
+					for(var i = 0 ; i < childCount ; i++) {
+						var childElement = this.$['param-fields'].childNodes[0];
+						this.$['param-fields'].removeChild(childElement);
+					}
+				}
+			},
+
+			/**
+			 * Invoke 후 성공시 핸들러
+			 * @param {Event} event
+			 */
+			_successResponseHandler: function (event) {
+				var responseValue = null;
+
+				if(this.resource.http_method == 'PUT') {
+					if(event.detail) {
+						responseValue = JSON.stringify(event.detail, null, 4);
+					}
+				} else {
+					if(event.detail.xhr.response) {
+						responseValue = JSON.stringify(event.detail.xhr.response, null, 4);
+					}
+				}
+
+				this.$.result.value = responseValue ? responseValue : 'OK';
+			},
+			
+			/**
+			 * invoke 후 실패시 핸들러
+			 * @param {Event} event
+			 */			
+			_errorResponseHandler: function (event) {
+				var errorInfo = null;
+
+				if(this.resource.http_method == 'PUT') {
+					if(event.detail) {
+						errorInfo = JSON.stringify(event.detail, null, 4);
+					}
+				} else {
+					if(event.detail.request.xhr.response) {
+						errorInfo = JSON.stringify(event.detail.request.xhr.response, null, 4);
+					}
+				}
+
+				this.$.result.value = errorInfo ? errorInfo : 'Unknown Error';
+			},
+			
+			/**
+			 * Reset Form
+			 */
+			_resetForm: function (event) {
+				this.resetMyForm();
+				this._resourceChanged(this.resource);
+			},
+
+			/**
+			 * Invoke
+			 */
+			_invoke: function(event) {
+				var validResult = this._validateInput();
+				if(validResult) {
+					this.invokeUrl = this.$['invoke-url'].value;
+					this.actionUrl = this.invokeUrl.replace('/rest/', '');
+					if(this.resource.http_method == 'PUT') {
+						this._invokePutApi(validResult);
+					} else {
+						this.getMyForm().submit();
+					}					
+				}
+			},
+
+			/**
+			 * validate input json
+			 */
+			_validateInput: function() {
+				var invokeUrl = this.$['invoke-url'].value;
+				if(invokeUrl.indexOf('{id}') >= 0) {
+					this.$.result.value = 'Error : Invalid Invoke Url - "{id}" must be replaced by resource id';
+					return false;
+				}
+
+				if(!((this.resource.http_method == 'POST' && 
+					    this.apiContentType.toLowerCase().indexOf('application/json') >= 0) || 
+					    this.resource.http_method == 'PUT')) return true;
+
+				var formParams = this.$.form.serialize();
+
+				if(formParams.input) {
+					try {
+						var params = JSON.parse(formParams.input);
+						return params;
+					} catch(e) {
+						this.$.result.value = 'Error : Invalid Input JSON - \nDetails :' + e.toString();
+						return false;
+					}
+				}
+
+				return true;
+			},
+
+			/**
+			 * Invoke PUT API
+			 */
+			_invokePutApi: function(params) {
+				var putResource = this.$['put-resource'];
+				var url = this.invokeUrl.substr(this.invokeUrl.indexOf('/rest/') + 6);
+				putResource.resourceUrl = url;
+				putResource.body = (params === true) ? null : params;
+				putResource.generateRequest();
+			},
+
+			/**
+			 * detail item view를 구성하기 위한 필수 함수 
+			 * item view를 구성한다.
+			 *
+			 * @return {Object} resource 리소스 데이터 (Object) 혹은 리소스 아이디 (Number)
+			 */
+			loadDetailData: function(resource) {
+				if(resource) {
+					this.resource = resource;
+					this.inputParams = resource.input_type_list;
+				}
+			}
+			
+		});
+	</script>
+</dom-module>

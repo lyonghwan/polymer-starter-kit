@@ -1,0 +1,120 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../bower_components/things-grid/things-resource-grid.html">
+
+<link rel="import" href="./things-menu-based-grid-behavior.html">
+
+<!--
+리소스 타입 메뉴 기반 그리드 화면,
+외부에서 메뉴 아이디만 전달하면 메뉴 기반으로 그리드가 표시된다.
+-->
+
+<dom-module id="things-menu-based-grid">
+	<template>
+		<style>
+			:host {
+				display: block;
+				@apply(--layout-vertical);
+				@apply(--layout-flex);
+			}
+			
+			things-resource-grid {
+				@apply(--layout-flex);
+			}
+		</style>
+
+    <things-ajax 
+      auto
+      id="menu-ajax"
+      method="GET"
+      resource-url="[[menuUrl]]"
+      last-response="{{menuInfo}}">
+    </things-ajax> 
+
+		<things-ajax 
+			auto
+			id="resource-meta"
+			method="GET"
+			resource-url="[[menuMetaUrl]]"
+			last-response="{{metaData}}">
+		</things-ajax>
+
+		<things-resource-grid 
+			id="grid"
+			grid-height="[[gridHeight]]"
+			model="[[gridModel]]" 
+			columns="[[gridColumns]]"
+			config="[[gridConfig]]"
+			buttons="[[buttons]]"
+			current-page="[[page]]"
+			per-page="[[perPage]]"
+			data="[[items]]"
+			total-count="[[itemCount]]"
+			grid-save-action="[[menuInfo.grid_save_url]]"
+			fixed-column-count="[[menuInfo.fixed_columns]]">
+		</things-resource-grid>
+	</template>
+
+	<script>
+		Polymer({
+			is: 'things-menu-based-grid',
+
+			behaviors: [
+				Things.MenuBasedGridBehavior
+			],
+
+			properties: {
+				/**
+				 * 메뉴 명
+				 */
+				menuName : {
+					type: String
+				},
+
+				/**
+				 * 메뉴 URL
+				 */
+				menuUrl: {
+					type: String,
+					computed: '_computeMenuUrl(menuName)'
+				},
+
+				/**
+				 * 버튼 
+				 */
+				buttons: {
+					type: Array,
+					value: []
+				}
+			},
+
+			observers: [
+				'_gridColumnsChanged(gridColumns)'
+			],
+
+			/**
+			 * 메뉴 명이 변경되면 Menu URL을 리턴 
+			 *
+			 * @param {String} menuName
+			 */
+			_computeMenuUrl: function(menuName) {
+				return 'menus/show_by_name?name=' + menuName;
+			},
+
+			/**
+			 * things-resource-grid를 리턴한다.
+			 */
+			getGrid: function() {
+				return this.$.grid;
+			},
+
+			/**
+			 * Grid Columns 변경시
+			 */
+			_gridColumnsChanged: function(gridColumns) {
+				this.fire('things-view-columns-grid-meta-changed', gridColumns);
+			}			
+		});
+	</script>
+</dom-module>

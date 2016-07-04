@@ -1,0 +1,145 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../bower_components/things-grid/things-resource-grid.html">
+
+<link rel="import" href="./things-diy-based-grid-behavior.html">
+
+<!--
+리소스 타입 DiyGrid 기반 그리드 화면,
+외부에서 DiyGrid 아이디만 전달하면 DiyGrid 기반으로 그리드가 표시된다.
+-->
+
+<dom-module id="things-diy-based-grid">
+	<template>
+		<style>
+			:host {
+				display: block;
+				@apply(--layout-vertical);
+				@apply(--layout-flex);
+			}
+			
+			things-resource-grid {
+				@apply(--layout-flex);
+			}
+		</style>
+
+    <things-ajax 
+      auto
+      id="diy-grid-ajax"
+      method="GET"
+      resource-url="[[getDiyGridUrl]]"
+      last-response="{{diyGrid}}">
+    </things-ajax> 
+
+		<things-ajax 
+			auto
+			id="meta-ajax"
+			method="GET"
+			resource-url="[[gridMetaUrl]]"
+			last-response="{{metaData}}">
+		</things-ajax>
+
+		<things-resource-grid 
+			id="grid"
+			paginatable="[[paginatable]]"
+			enable-detail-column="[[diyGrid.use_detail]]"
+			grid-height="[[gridHeight]]"
+			model="[[gridModel]]" 
+			columns="[[gridColumns]]"
+			config="[[gridConfig]]"
+			buttons="[[buttons]]"
+			current-page="[[page]]"
+			per-page="[[perPage]]"
+			data="[[items]]"
+			total-count="[[itemCount]]"
+			grid-save-action="[[gridSaveUrl]]"
+			fixed-column-count="[[fixedColumnCount]]">
+		</things-resource-grid>
+	</template>
+
+	<script>
+		Polymer({
+			is: 'things-diy-based-grid',
+
+			behaviors: [
+				Things.DiyBasedGridBehavior
+			],
+
+			properties: {
+				/**
+				 * DiyGrid 명
+				 */
+				diyGridName : {
+					type: String
+				},
+
+				/**
+				 * DiyGrid를 조회하기 위한 URL
+				 */
+				getDiyGridUrl: {
+					type: String,
+					computed: '_computeGetDiyGridUrl(diyGridName)'
+				},
+
+				/**
+				 * Pagination 여부 
+				 */
+				paginatable: {
+					type: Boolean,
+					value: false
+				},
+
+				/**
+				 * 그리드 Save URL
+				 */
+				gridSaveUrl: {
+					type: String
+				},
+
+				/**
+				 * 그리드 고정 컬럼 수
+				 */
+				fixedColumnCount: {
+					type: Number,
+					value: 3
+				},
+
+				/**
+				 * 버튼 
+				 */
+				buttons: {
+					type: Array,
+					value: []
+				}
+			},
+
+			observers: [
+				'_gridColumnsChanged(gridColumns)'
+			],
+
+			/**
+			 * DiyGrid 명이 변경되면 DiyGrid 조회 URL을 리턴 
+			 *
+			 * @param {String} menuName
+			 */
+			_computeGetDiyGridUrl: function(diyGridName) {
+				return 'diy_grids/show_by_name?name=' + diyGridName;
+			},
+
+			/**
+			 * things-resource-grid를 리턴한다.
+			 */
+			getGrid: function() {
+				return this.$.grid;
+			},
+
+			/**
+			 * Grid Columns 변경
+			 */
+			_gridColumnsChanged: function(gridColumns) {
+				this.fire('things-view-columns-grid-meta-changed', gridColumns);
+			}
+		});
+	</script>
+</dom-module>

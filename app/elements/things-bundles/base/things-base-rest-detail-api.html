@@ -1,0 +1,203 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../../bower_components/paper-tabs/paper-tabs.html">
+<link rel="import" href="../../../bower_components/iron-pages/iron-pages.html">
+
+<link rel="import" href="../../../bower_components/things-meta/things-detail-form-meta-behavior.html">
+<link rel="import" href="../../../bower_components/things-view-open-behavior/things-view-open-behavior.html">
+
+<link rel="import" href="./things-base-rest-detail-api-inout.html">
+<link rel="import" href="./things-base-rest-detail-api-test.html">
+
+<!--
+A comment describing this element
+
+Example:
+
+  <div>
+    <things-ajax 
+      auto
+      id="resource-meta"
+      method="GET"
+      resource-url="entities/Alarm/resource_columns"
+      last-response="{{metaData}}">
+    </things-ajax>
+
+    <things-ajax
+      auto
+      resource-url="alarms/:id"
+      resource-action="find"
+      resource-id="1"
+      last-response="{{detailViewData}}">
+    </things-ajax>
+  </div>
+
+@demo demo/index.html
+-->
+
+<dom-module id="things-base-rest-detail-api">
+  <template>
+    <style>
+      :host {
+        display: block;
+        @apply(--layout-vertical)
+        @apply(--layout-flex)
+      }
+      paper-tabs{
+        @apply(--things-content-tabs);
+      }
+      paper-tab{
+        @apply(--things-content-tab);
+      }
+      paper-tab[aria-selected="true"]{
+        @apply(--things-content-tab-selected);
+      }
+    </style>
+
+    <things-ajax 
+      auto
+      id="get-resource"
+      method="GET"
+      resource-url="[[apiDetailSearchUrl]]"
+      last-response="{{apiDetail}}">
+    </things-ajax>
+
+    <paper-tabs id="tabGroup" selected="{{currentTabIdx}}" noink>
+      <template is="dom-repeat" items="{{_panels}}">
+        <paper-tab id="{{item.elementId}}">{{item.title}}</paper-tab>
+      </template>
+    </paper-tabs>
+
+    <iron-pages id="tabPages" selected="{{currentTabIdx}}" class="flex layout vertical">
+      <things-base-rest-detail-api-inout id="rest-in" mode="in" class="flex">
+      </things-base-rest-detail-api-inout>
+
+      <things-base-rest-detail-api-inout id="rest-out" mode="out" class="flex">
+      </things-base-rest-detail-api-inout>
+
+      <things-base-rest-detail-api-test id="rest-test" class="flex">
+      </things-base-rest-detail-api-test>
+    </iron-pages>
+  </template>
+
+  <script>
+    Polymer({
+
+      is: 'things-base-rest-detail-api',
+
+      behaviors: [ 
+        Things.ViewOpenBehavior
+      ],
+
+      properties: {
+        /**
+         * 폼 타이틀 
+         */
+        title: {
+          type: String
+        },
+
+        /**
+         * API 정보 
+         */
+        resource: {
+          type: Object
+        },
+
+        /**
+         * API 상세 정보 
+         */
+        apiDetail: {
+          type: Object,
+          notify: true,
+          observer: '_onApiDetailChanged'
+        },
+
+        /**
+         * API 상세 정보 조회를 위한 apiDetailSearchUrl을 구성한다.
+         */
+        apiDetailSearchUrl: {
+          type: String,
+          computed: '_computeApiDetailSearchUrl(resource)'
+        },        
+
+        /**
+         * 현재 선택된 탭 index
+         */
+        currentTabIdx: {
+          type: Number,
+          value: 0
+        },
+
+        /**
+         * default panel array
+         */
+        _panels: {
+          type: Array,
+          value: []
+        }
+      },
+
+      listeners: {
+        'tabPages.iron-select': '_onPageSelected'
+      },
+
+      attached: function () {
+         this._panels =[{
+            title: Things.DataGlobal.t('title.input_param'),
+            elementId: 'things-base-rest-detail-api-inout'
+          }, {
+            title: Things.DataGlobal.t('title.output_param'),
+            elementId: 'things-base-rest-detail-api-inout'
+          }, {
+            title: Things.DataGlobal.t('title.test'),
+            elementId: 'things-base-rest-detail-api-test'
+          }] 
+      },
+      /**
+       * Active Tab을 설정한다.
+       *
+       * @param {Number} currentTabIdx
+       */
+      setActiveTab: function(currentTabIdx) {
+        this.currentTabIdx = currentTabIdx;
+      },
+
+      /**
+       * Tab 선택이 변경된 경우 
+       */
+      _onPageSelected: function(event) {
+        if(!this.apiDetail) return;
+
+        var detailItemView = event.detail.item;
+        detailItemView.loadDetailData(this.apiDetail);       
+        this.fire(detailItemView.id + '-selected', detailItemView);
+      },
+
+      /**
+       * API Detail 값이 변경된 경우 
+       */
+      _onApiDetailChanged: function(apiDetail) {
+        var prevTabIdx = this.currentTabIdx;
+        this.setActiveTab(-1);
+        this.setActiveTab(prevTabIdx);
+      },
+
+      /**
+       * API Detail Search URL
+       */
+      _computeApiDetailSearchUrl: function(resource) {
+          return resource ? 'rests/api/' + resource.id + '?api_id=' + resource.id : null;
+      },
+
+      /**
+       * detail item view를 구성하기 위한 필수 함수 
+       * item view를 구성한다.
+       *
+       * @return {Object} resource 리소스 데이터 (Object) 혹은 리소스 아이디 (Number)
+       */
+      loadDetailData: function(resource) {
+        this.resource = resource;
+      }
+    });
+  </script>
+</dom-module>

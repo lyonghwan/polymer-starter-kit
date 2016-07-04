@@ -1,0 +1,176 @@
+<link ref="import" href="../../bower_components/polymer/polymer.html">
+<dom-module id="things-image-selector">
+    <style>
+    label {
+        @apply(--things-label);
+    }
+    
+    input {
+        @apply(--things-input);
+        width: calc(65% - 37px);
+    }
+    
+    paper-icon-button {
+        @apply(--things-small-icon);
+        margin-right: 7px;
+        margin-left: -27px;
+        opacity: .4;
+        position: relative;
+        top: -2px;
+    }
+    
+    iron-icon {
+        @apply(--things-picker-button);
+        background: url(/images/icon-resource-select.png) 50% 3px no-repeat var(--paper-blue-grey-300);
+    }
+    
+    paper-dialog {
+		position: fixed;
+		top: 10%;
+		bottom:10%;
+		left: 15%;
+		right: 15%;
+		margin: 0px;
+		@apply(--layout-flex);
+		@apply(--layout-vertical);
+    }
+    
+    things-card-image-list {
+    	overflow: auto;
+    }
+
+    paper-toolbar {
+        background-color: var(--things-primary-background-color);
+        height: 45px;
+        margin-top: 0px !important;
+        @apply(--things-padding-clear)
+    }
+    
+    paper-toolbar::shadow #topBar {
+        height: 45px;
+    }
+    
+    paper-toolbar::shadow #bottomBar {
+        height: 45px;
+        @apply(--layout-horizontal);
+        @apply(--layout-end-justified);
+        padding: 0 10px;
+    }
+    
+    paper-toolbar .title {
+        margin-left: 32px !important;
+        line-height: initial !important;
+    }
+    
+    .close-btn {
+        @apply(--things-header-button);
+        background: url(/images/icon-close.png) 100% 50% no-repeat;
+        margin-right: 10px;
+    }
+    </style>
+    <template>
+        <input is="iron-input" name="[[name]]" bind-value="[[value]]" hidden>
+        <label>[[label]]</label>
+        <input is="iron-input" bind-value="[[display]]" readonly>
+        <paper-icon-button suffix on-tap="clearValue" icon="clear" alt="clear" title="clear">
+        </paper-icon-button>
+        <iron-icon prefix on-tap="toggleImageSelector"></iron-icon>
+
+        <paper-dialog id="dialog" entry-animation="scale-up-animation" exit-animation="fade-out-animation" modal>
+            <paper-toolbar>
+                <span class="title">[[title]]</span>
+                <div class="buttonsGroup">
+                    <button dialog-dismiss class="close-btn"></button>
+                </div>
+            </paper-toolbar>
+            <things-ajax id="attachment-search" method="GET" resource-url="attachments" last-response="{{lastResponse}}">
+            </things-ajax>
+            <things-card-image-list items="[[newItems]]" detail-fields="[[detailFIelds]]" is-selector>
+            </things-card-image-list>
+        </paper-dialog>
+    </template>
+    <script>
+    Polymer({
+        is: 'things-image-selector',
+
+        properties: {
+
+            label: {
+                type: String
+            },
+
+            display: {
+                type: String
+            },
+
+            title: {
+                type: String,
+                value: 'Image Selector'
+            },
+
+            lastResponse: {
+                type: Object,
+                observer: '_responseChanged'
+            },
+
+            newItems: {
+                type: Object
+            },
+
+            detailFIelds: {
+                type: String,
+                value: 'file_size'
+            },
+
+            metaData: {
+                type: Object
+            }
+        },
+
+        listeners: {
+            'things-card-image-selected': '_onImageSelected'
+        },
+
+        _onImageSelected: function(e) {
+            this.display = e.detail.name;
+            this.metaData = e.detail;
+            this.$['dialog'].close();
+        },
+
+        _responseChanged: function(lastResponse) {
+            var tempItems = lastResponse.items;
+
+            for (var i = 0; i < tempItems.length; i++) {
+                if (tempItems[i].mimetype == 'csv' || tempItems[i].mimetype == 'xlsx' || tempItems[i].mimetype == 'html') {
+                    tempItems.splice(i, 1);
+                    i--;
+                } else if (!tempItems[i].mimetype) {
+                    var fileNameArr = tempItems[i].name.split(".");
+                    var fileExtention = fileNameArr[1];
+
+                    if (fileExtention == 'csv' || fileExtention == 'xlsx' || fileExtention == 'html') {
+                        tempItems.splice(i, 1);
+                        i--;
+                    } else {
+                        tempItems[i].attachment_id = tempItems[i].id;
+                    }
+                } else {
+                    tempItems[i].attachment_id = tempItems[i].id;
+                }
+            }
+
+            this.newItems = tempItems;
+        },
+
+        toggleImageSelector: function() {
+        	this.$['attachment-search'].generateRequest();
+            this.$['dialog'].open();
+        },
+
+        clearValue: function() {
+            this.display = '';
+            this.metaData = '';
+        }
+    });
+    </script>
+</dom-module>

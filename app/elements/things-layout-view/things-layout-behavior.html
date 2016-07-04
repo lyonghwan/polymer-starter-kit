@@ -1,0 +1,50 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<script>
+
+window.Things = window.Things || {};
+
+/**
+ * 레이아웃 동작을 정의한다.
+ *
+ * @polymerBehavior Things.LayoutBehavior
+ */
+Things.LayoutBehavior = {
+
+  properties: {
+    /**
+     * View Section 정보 - View Section Id : View 매핑 정보 
+     */
+    sections: {
+      type: Object,
+      observer: '_sectionChanged'
+    }
+  },
+
+  /**
+   * Sections 정보로 View를 설정한다.
+   * 
+   * @param {Object} sections
+   */
+  _sectionChanged: function(sections) {
+    if(!sections) return;
+
+    var insertionPoints = Polymer.dom(this.root).querySelectorAll('.layout-content');
+
+    for(var i = 0 ; i < insertionPoints.length ; i++) {
+      // 1. sectionId로 section을 찾는다.
+      var insertionPoint = insertionPoints[i];
+      // 2. section에 view를 추가 
+      var section = sections[insertionPoint.id];
+      if(section) {
+        this.set(insertionPoint.id + 'Title', section.title);
+        insertionPoint.appendChild(section);
+        this.$[section.id] = section;
+      }
+    }
+
+    this.fire('sections-configured');
+  }
+}
+
+</script>

@@ -1,0 +1,147 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../things-meta-view/things-diy-based-grid.html">
+
+<dom-module id="things-term-common-grid">
+	<template>
+    <style>
+      :host {
+        display: block;
+        @apply(--layout-vertical);
+        @apply(--layout-flex);
+      }
+      things-diy-based-grid {
+        @apply(--layout-flex);
+      }
+    </style>
+
+		<things-ajax
+			id="search-data"
+			resource-action="[[action]]"
+			resource-url="[[resourceUrl]]"
+			query-fields="[[queryFields]]"
+			sort-fields="[[sortFields]]"
+			limit="[[limit]]"
+			last-response="{{lastResponse}}">
+		</things-ajax>
+
+    <things-diy-based-grid
+    	fixed-column-count="[[fixedColumnCount]]"
+    	diy-grid-name="[[diyGridName]]"
+    	items="{{gridData}}"
+    	buttons="[[buttons]]">
+    </things-diy-based-grid>
+	</template>
+	
+	<script>
+		Polymer({
+			is: 'things-term-common-grid',
+
+			properties: {
+
+				/**
+				 * ajax action
+				 */
+				action: {
+					type: String,
+					value: 'index'
+				},
+
+				/**
+				 * resourceUrl
+				 */
+				resourceUrl: {
+					type: String,
+					value: 'lots'
+				},
+
+				/**
+				 * query conditions
+				 */
+				queryFields: {
+					type: Array
+				},
+
+				/**
+				 * sorting conditions
+				 */
+				sortFields: {
+					type: Array,
+					value: [{
+						field: 'updated_at',
+						ascending: false
+					}]
+				},
+
+				/**
+				 * searching limit
+				 */
+				limit: {
+					type: Number,
+					value: 10
+				},
+
+				/**
+				 * ajax response
+				 */
+				lastResponse: {
+					type: Object,
+					observer: '_responseChanged'
+				},
+
+				/**
+				 * grid의 고정 column 수
+				 */
+				fixedColumnCount: {
+					type: Number,
+					value: 1
+				},
+
+				/**
+				 * 사용할 diy grid name
+				 */
+				diyGridName: {
+					type: String,
+					value: 'OI-LatestLotList'
+				},
+				
+				/**
+				 * grid에 매핑할 dataset
+				 */
+				gridData: {
+					type: Array
+				},
+
+				/**
+				 * Buttons
+				 */
+				buttons : {
+					type: Array,
+					value: function() {
+						return [ { id: 'refresh-btn', text: 'refresh' } ];
+					}
+				}
+			},
+
+
+      listeners: {
+        'refresh-btn-tap' : 'refreshData'
+      },
+
+			/**
+			 * ajax 호출
+			 */
+			refreshData: function() {
+				this.$['search-data'].generateRequest();
+			},
+			
+			/**
+			 * lastResonse를 gridData에 초기화
+			 */
+			_responseChanged: function(response) {
+				this.gridData = (response && response.items) ? response.items : [];
+			}
+		})
+	</script>
+</dom-module>

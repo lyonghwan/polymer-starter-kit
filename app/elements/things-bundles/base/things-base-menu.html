@@ -1,0 +1,454 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../../bower_components/things-button/things-button.html">
+<link rel="import" href="../../../bower_components/things-form/things-resource-form.html">
+<link rel="import" href="../../../bower_components/things-form/things-search-form.html">
+<link rel="import" href="../../../bower_components/things-full-dialog/things-full-dialog.html">
+<link rel="import" href="../../../bower_components/things-grid/things-basic-grid.html">
+<link rel="import" href="../../../bower_components/things-grid/things-resource-grid.html">
+<link rel="import" href="../../../bower_components/things-i18n-msg/things-i18n-msg.html">
+<link rel="import" href="../../../bower_components/things-meta/things-menu-meta-behavior.html">
+<link rel="import" href="../../../bower_components/things-view-open-behavior/things-view-open-behavior.html">
+
+<link rel="import" href="./things-base-menu-setup.html">
+<link rel="import" href="./things-base-menu-detail.html">
+
+<!--
+메뉴 관리 화면 셋. 
+두 개의 그리드로 구성되는데 하나는 메인 메뉴 표시용이고 
+다른 하나는 메인 메뉴를 선택했을 때 서브 메뉴 리스트를 표시하는데 사용된다.
+-->
+
+<dom-module id="things-base-menu">
+	<template>
+		<style>
+			:host {
+				display: block;
+				@apply(--layout-vertical)
+				@apply(--layout-flex)
+			}
+			
+			.subtitle:before {
+				content:"";
+				@apply(--things-subtitle-icon);
+			}
+
+			.subtitle {
+				@apply(--things-default-padding);
+				padding-bottom:7px;
+				@apply(--things-subtitle);
+			}
+
+			things-resource-grid {
+				@apply(--things-default-padding);
+				padding-top:0px;
+				padding-bottom:0px;
+			}
+			.things-resource-grid-main {
+				@apply(--layout-flex);
+				min-height: 250px;
+			}
+			.things-resource-grid-sub {
+				@apply(--layout-flex-3);
+			}
+		</style>
+
+			<things-ajax 
+				auto
+				id="resource-meta"
+				method="GET"
+				resource-url="[[menuMetaUrl]]"
+				last-response="{{metaData}}">
+			</things-ajax>
+
+			<things-search-form 
+				id="search-form"
+				title="[[menuInfo.title]]"
+				form-fields="[[searchFormFields]]" 
+				select-fields="[[selectFields]]"
+				sort-fields="[[sortFields]]"
+				action-url="[[resourceUrl]]" 
+				page=1
+				per-page=1000
+				last-response="{{mainMenus}}">
+			</things-search-form>
+
+			<span class="subtitle">
+				<things-i18n-msg msgid="title.main_menu"></things-i18n-msg>
+			</span>
+
+			<things-resource-grid 
+				id="grid"
+				class="things-resource-grid-main"
+				config ="[[gridConfig]]"
+				model="[[gridModel]]"
+				columns="[[mainGridColumns]]"
+				current-page=1
+				per-page=1000
+				data="[[mainMenus.items]]"
+				total-count="[[mainMenus.total]]"
+				grid-save-action="[[gridSaveUrl]]"
+				selected-row-data="{{selectedRow}}"
+				buttons="[[buttons]]"
+				enable-detail-column>
+			</things-resource-grid>
+
+			<things-ajax 
+				id="search-submenus"
+				resource-url="menus/:id/sub_menus?showall=true"
+				resource-action="index"
+				last-response="{{subMenus}}">
+			</things-ajax>
+
+			<span class="subtitle">
+				<things-i18n-msg msgid="title.sub_menu"></things-i18n-msg>
+			</span>
+
+			<things-resource-grid 
+				id="sub-grid"
+				class="things-resource-grid-sub"
+				config ="[[gridConfig]]"
+				model="[[gridModel]]"
+				columns="[[gridColumns]]"
+				current-page=1
+				per-page=1000
+				data="[[subMenus]]"
+				grid-save-action="[[gridSaveUrl]]"
+				buttons="[[buttons]]"
+				enable-detail-column>
+			</things-resource-grid>
+	</template>
+
+	<script>
+		Polymer({
+			is: 'things-base-menu',
+
+			behaviors: [ 
+				Things.MenuMetaBehavior
+			],
+			
+			properties: {
+				/**
+				 * 서버에서 관리하는 메뉴 정보 
+				 */
+				menuInfo: {
+					type: Object,
+					observer: '_menuInfoChanged'
+				},
+
+				/**
+				 * 그리드 저장 (Multiple Save) URL
+				 */
+				gridSaveUrl: {
+					type: String,
+					computed: '_computeGridSaveUrl(resourceUrl)'
+				},
+
+				/**
+				 * 그리드에서 선택된 Row Data
+				 */
+				selectedRow: {
+					type: Object
+				},
+
+				/**
+				 * mainGridColumn
+				 */
+				mainGridColumns: {
+					type: Array,
+					value: function() {
+						return [ {
+							name: 'id',
+							fieldName: 'id',
+							width: 0
+						}, {
+							name: 'rank',
+							fieldName: 'rank',
+							width: 50,
+							header: {
+								text: Things.DataGlobal.t('label.rank')
+							},
+							styles: {
+								textAlignment: 'far',
+								numberFormat: '#,##0'
+							},
+							editor : {
+								type: 'number'
+							}
+						}, {
+							name: 'name',
+							fieldName: 'name',
+							width: 180,
+							header: {
+								text: Things.DataGlobal.t('label.name')
+							},
+							validations: [{
+								expression: 'value is not empty','level':'error','message':'(name) should not be empty!'
+							},{
+								expression: 'len value < 64','level':'error','message':'Maximum (name) length is (64)'
+							}]
+						}, {
+							name: 'description',
+							fieldName: 'description',
+							width: 200,
+							header: {
+								text: Things.DataGlobal.t('label.description')
+							},
+							validations: [{
+								expression: 'len value < 254','level':'error','message':'Maximum (description) length is (254)'
+							}]
+						}, {
+							name: 'menu_type',
+							fieldName: 'menu_type',
+							width: 110,
+							lookupDisplay: true,
+							header: {
+								text: Things.DataGlobal.t('label.menu_type')
+							},
+							validations: [{
+								expression: 'len value < 20','level':'error','message':'Maximum (menu_type) length is (20)'
+							}],
+							editor: {
+								type: 'list',
+								domainOnly: true
+							},
+							lookupValues: ['', 'MENU','SCREEN','SEPARATOR','TEMPLATE'],
+							lookupLabels: ['', 'Menu','Screen','SEPARATOR','Template']
+						}, {
+							name: 'category',
+							fieldName: 'category',
+							width: 110,
+							lookupDisplay: true,
+							header: { 
+								text: Things.DataGlobal.t('label.category')
+							},
+							validations: [{
+								expression: 'len value < 64','level':'error','message':'Maximum (category) length is (64)'
+							}],
+							editor: {
+								type: 'list',
+								domainOnly: true
+							},
+							lookupValues: ['', 'STANDARD','TERMINAL'],
+							lookupLabels: ['', 'STANDARD','TERMINAL']
+						}, {
+							name: 'hidden_flag',
+							fieldName: 'hidden_flag',
+							width: 90,
+							editable: false,
+							header: {
+								text: Things.DataGlobal.t('label.hidden_flag')
+							},
+							renderer: {
+								type: 'check',
+								editable: true,
+								threeStates: false,
+								trueValues: 'true',
+								falseValues: 'false'
+							}
+						} ];
+					}
+				}
+			},
+
+			listeners : {
+				'search-form.things-form-pre-submit' : '_beforeSearchMenu', 
+				'grid.things-grid-detail-tap': '_showSubMenus',
+				'grid.things-grid-save-success': '_reloadMainMenus',
+				'grid.things-grid-configured' : '_reloadMainMenus',
+				'sub-grid.things-grid-detail-tap': '_showSetupMenu',
+				'sub-grid.things-grid-save-success': '_reloadSubMenus',
+				'sub-grid.things-grid-handle-save' : '_beforeSubMenuSave',
+				'detail-btn-tap' : '_showSetupDetail',
+				'detail-layout-btn-tap':'_showSetupDetailLayout'
+			},
+
+			/**
+			 * 메뉴 정보 변경시 모든 설정을 처리한다.
+			 *
+			 * @param {Object} menuInfo 메뉴 정보 
+			 */
+			_menuInfoChanged: function(menuInfo) {
+				if(menuInfo) {
+					this.menuId = menuInfo.id;
+					this.resourceType = menuInfo.resource_name;
+					this.resourceUrl = menuInfo.resource_url;
+					this.dataRoute = menuInfo.routing;
+					this.detailView = menuInfo.detail_form_id;
+				}
+			},			
+
+			/**
+			 * resourceUrl로 grid save url을 생성
+			 *
+			 * @param {String} resourceUrl
+			 * @return {String} grid save URL
+			 */
+			_computeGridSaveUrl: function(resourceUrl) {
+				return resourceUrl + '/update_multiple.json';
+			},
+
+			/**
+			 * 메뉴 조회 전 액션
+			 *
+			 * @param {Event} event Form Submit Event
+			 */			
+			_beforeSearchMenu: function(event) {
+				event.preventDefault();
+
+				var form = event.detail;
+				if(!form.request.params.query) {
+					form.request.params.query = "[{'name': 'parent_id', 'operator': 'is_null'}]";
+					
+				} else {
+					var query = form.request.params.query;
+					var queryArr = JSON.parse(query);
+					queryArr.push({ name: 'parent_id', operator : 'is_null' });
+					form.request.params.query = JSON.stringify(queryArr);
+				}
+			},
+
+			/**
+			 * 메뉴 셋업 페이지를 오픈
+			 *
+			 * @param {Object} e 서브 메뉴 그리드 Detail Button 클릭 이벤트
+			 */
+			_showSetupMenu: function(e) {
+				var menu = e.detail;
+				var viewElement = document.createElement(this.menuInfo.detail_form_id);
+				viewElement.id = 'detail-view';
+				viewElement.title = menu.name;
+				viewElement.resourceType = 'Menu';
+				viewElement.resourceUrl = 'menus/:id';
+				viewElement.resource = menu;
+				viewElement.resourceId = menu.id;
+				viewElement.formFields = this.resourceFormFields;
+				viewElement.showDetailView(menu.id, menu);
+
+				var me = this;
+				viewElement.addEventListener('things-resource-form-saved', function(e) {
+					viewElement.closePopupView();
+					me._reloadSubMenus();
+				});
+			},
+
+			/**
+			 * 메뉴 상세 셋업 페이지를 오픈
+			 *
+			 * @param {Object} e Detail 버튼 클릭 이벤트
+			 */
+			_showSetupDetail: function(e) {
+				var subgrid = this.$['sub-grid'].getGridObject();
+				var rows = subgrid.getCheckedRows();
+				if(!rows || rows.length == 0) return;
+
+				var ds = this.$['sub-grid'].getGridDataSet();
+				var menu = ds.getRowObject(rows[0]._index);
+
+				var viewElement = document.createElement('things-base-menu-detail');
+				viewElement.id = 'detail-view';
+				viewElement.title = menu.name;
+				viewElement.resourceId = menu.id;
+				viewElement.resource = menu;
+				viewElement.showDetailView(menu.id, menu);
+			},
+			/**
+			 * 메뉴 상세 셋업 페이지를 오픈
+			 *
+			 * @param {Object} e Detail 버튼 클릭 이벤트
+			 */
+			_showSetupDetailLayout: function(e) {
+				var subgrid = this.$['sub-grid'].getGridObject();
+				var rows = subgrid.getCheckedRows();
+				if(!rows || rows.length == 0) return;
+
+				var ds = this.$['sub-grid'].getGridDataSet();
+				var menu = ds.getRowObject(rows[0].dataIndex());
+
+				var viewElement = document.createElement('things-layout-athena');
+				viewElement.id = 'detail-view';
+				viewElement.title = menu.name;
+				viewElement.resourceId = menu.id;
+				viewElement.resource = menu;
+
+				var childElememts = [ {
+					viewSection: 'leftContent',
+					title : Things.DataGlobal.t('title.detail'), 
+					elementName : 'things-base-menu-detail-main',
+					elementId:'detailMain',
+					attributes:[
+						{name:'resource-id', value: menu.id},
+						{name : 'class', value : 'layout flex'}
+					]
+				}, {
+					viewSection : 'rightTopContent',
+					title : Things.DataGlobal.t('title.setup_columns'), 
+					elementName : 'things-base-menu-detail-columns',
+					elementId:'detailColumns',
+					class:'layout flex',
+					attributes:[
+						{name : 'class', value : 'layout flex'}
+					]
+				}, {
+					viewSection :'rightBottomContent',
+					title : Things.DataGlobal.t('title.setup_button'), 
+					elementName : 'things-base-menu-detail-buttons',
+					elementId:'detailButtons',
+					attributes:[
+						{name : 'class', value : 'layout flex'}
+					]
+				} ];
+
+				viewElement.sections = childElememts;
+				viewElement.showDetailView(menu.id, menu);
+			},
+
+			/**
+			 * 서브 메뉴를 표시한다.
+			 *
+			 * @param {Event} event 그리드에서 선택된 event
+			 */
+			_showSubMenus: function(event) {
+				this.$['search-submenus'].selectFields = this.selectFields;
+				this.$['search-submenus'].resourceId = event.detail.id;
+				this._reloadSubMenus();
+			},
+
+			/**
+			 * 메인 메뉴 드리드 리프레쉬
+			 */
+			_reloadMainMenus: function(event) {
+				this.$['search-form'].submitMyForm();
+			},
+
+			/**
+			 * 서브 메뉴 그리드 리프레쉬
+			 */
+			_reloadSubMenus: function(event) {
+				this.$['search-submenus'].generateRequest();
+			},
+
+			/**
+			 * 서브 메뉴 저장 전에...
+			 */
+			_beforeSubMenuSave: function(event) {
+				var subGrid = event.target;
+				var changedList = subGrid.writeData;
+
+				if(!changedList || changedList.length == 0)
+					return event;
+
+				var parentId = this.selectedRow.id;
+				changedList.forEach(function(changedData) {
+					if(changedData.cud_flag_ == 'c' && (!changedData.parent || !changedData.parent_id)) {
+						changedData.parent_id = parentId;
+					}
+				});
+
+				return event;
+			}
+
+		});
+	</script>
+</dom-module>

@@ -1,0 +1,85 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../things-content/things-resource-content.html">
+
+<!--
+	Resource Content Template
+-->
+
+<dom-module id="things-resource-template">
+	<template>
+		<things-resource-content
+			id="terminology-content"
+			layout="fullbleed layout vertical"
+			title="[[title]]"
+			current-route="{{currentRoute}}"
+			my-route="{{resourceUrl}}"
+			resource-type="{{resourceType}}"
+			resource-url="{{resourceUrl}}"
+			grid-buttons="{{gridButtons}}"
+			enable-detail-column>
+		</things-resource-content>
+	</template>
+
+	<script>
+		Polymer({
+			is: 'things-resource-template',
+
+			properties: {
+
+				/**
+				 * 화면 타이틀 
+				 */
+				title: {
+					type: String,
+					value: function() {
+						return Things.DataGlobal.t('menu.Template')
+					}
+				},
+
+				/**
+				 * Current Routing
+				 */
+				currentRoute: {
+					type: String,
+					notify : true
+				},
+
+				/**
+				 * 그리드 버튼
+				 */
+				gridButtons: {
+					type: Array,
+					value: function() {
+						return [ {
+              id: 'import-btn',
+              text: 'import',
+              icon: 'icons:swap-vert'
+						}, {
+              id: 'export-btn',
+              text: 'export',
+              icon: 'icons:swap-vert'
+						}, {
+              id: 'add-btn',
+              text: 'add',
+              icon: 'icons:add'
+						}, {
+              id: 'delete-btn',
+              text: 'delete',
+              icon: 'icons:delete'
+						}, {
+              id: 'save-btn',
+              text: 'save',
+              icon: 'icons:save'							
+						} ]
+					}
+				}
+			},
+
+			listeners : {
+			}
+
+		});
+	</script>
+</dom-module>

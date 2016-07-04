@@ -1,0 +1,114 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../../bower_components/paper-tabs/paper-tab.html">
+<link rel="import" href="../../../bower_components/paper-tabs/paper-tabs.html">
+<link rel="import" href="../../../bower_components/iron-pages/iron-pages.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../../bower_components/things-attached-file/things-attached-file.html">
+<link rel="import" href="../../../bower_components/things-code-editor/things-code-editor.html">
+<link rel="import" href="../../../bower_components/things-code-editor/things-template-editor.html">
+<link rel="import" href="../../../bower_components/things-detail/things-resource-detail-tab-view-behavior.html">
+<link rel="import" href="../../../bower_components/things-extension/things-extension.html">
+<link rel="import" href="../../../bower_components/things-form/things-resource-form.html">
+
+<link rel="import" href="./things-base-role-detail-auth.html">
+<link rel="import" href="./things-base-role-detail-user.html">
+
+<!--
+  Role Detail View
+-->
+
+<dom-module id="things-base-role-detail">
+  <template>
+    <style>
+      :host {
+        display: block;
+        @apply(--layout-vertical);
+      }
+      iron-pages {
+        @apply(--layout-flex);
+        @apply(--layout-vertical);
+      }
+      things-base-role-detail-auth {
+        @apply(--layout-flex);
+      }
+      things-base-role-detail-user {
+        @apply(--layout-flex);
+      }
+    </style>
+
+    <things-ajax 
+      auto
+      id="get-resource"
+      method="GET"
+      resource-url="roles/:id"
+      resource-id="[[resourceId]]"
+      last-response="{{resource}}">
+    </things-ajax>
+
+    <paper-tabs id="tabGroup" selected="{{currentTabIdx}}" noink scrollable>
+      <template is="dom-repeat" items="{{_panels}}">
+        <paper-tab id="{{item.elementId}}">{{item.title}}</paper-tab>
+      </template>
+    </paper-tabs>
+
+    <iron-pages id="tabPages" selected="{{currentTabIdx}}">
+      <things-resource-form
+        id="resource-form" 
+        resource-url="roles/:id"
+        resource-id="[[resourceId]]"
+        resource="{{resource}}"
+        form-fields="[[formFields]]"
+        remove-fields-on-save="[[removeFieldsOnSave]]">
+      </things-resource-form>
+
+      <things-base-role-detail-auth id="menu-authorization">
+      </things-base-role-detail-auth>
+
+      <things-base-role-detail-user id="users">
+      </things-base-role-detail-user>
+    </iron-pages>
+  </template>
+
+  <script>
+    Polymer({
+
+      is: 'things-base-role-detail',
+
+      behaviors: [ 
+        Things.ResourceDetailTabViewBahavior
+      ],
+
+      properties: {
+        /**
+         * Save 하기 전에 폼에는 있지만 Save하는데 필요 없는 필드를 삭제하기 위한 필드명
+         */
+        removeFieldsOnSave: {
+          type: Array,
+          value: [
+            'creator', 
+            'updater', 
+            'creator_id', 
+            'updater_id', 
+            'created_at', 
+            'updated_at'
+          ]
+        }
+      },
+
+      ready: function() {
+        this._panels = [ {
+          title: Things.DataGlobal.t('title.basic_info'),
+          elementId: 'things-resource-form'
+        }, {
+          title: Things.DataGlobal.t('title.menu_auth'),
+          elementId: 'things-resource-grid'
+        }, {
+          title: Things.DataGlobal.t('title.user'),
+          elementId: 'things-resource-grid'
+        } ];
+      }      
+
+    });
+  </script>
+</dom-module>

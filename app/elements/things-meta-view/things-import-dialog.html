@@ -1,0 +1,243 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../bower_components/paper-dialog-behavior/paper-dialog-behavior.html">
+<link rel="import" href="../../bower_components/paper-dialog-behavior/paper-dialog-shared-styles.html">
+
+<link rel="import" href="things-diy-based-grid.html">
+<link rel="import" href="things-import-grid.html">
+
+<dom-module id="things-import-dialog">
+  <style>
+    :host {
+      display: inline-block;
+      @apply(--layout-vertical)
+    }
+    paper-toolbar {
+      background-color:var(--things-primary-background-color);
+      height:45px;
+      margin-top:0px !important;
+      @apply(--things-padding-clear)
+    }
+    paper-toolbar::shadow #topBar {
+      height:45px;
+      @apply(--things-padding-clear)
+    }
+    paper-dialog {
+      position: fixed;
+      top: 10%;
+      bottom:10%;
+      left: 15%;
+      right: 15%;
+      margin: 0px;
+      @apply(--layout-flex);
+      @apply(--layout-vertical);
+    }
+    .buttonsGroup {
+      @apply(--layout-horizontal);
+      @apply(--layout-end-justified);
+      @apply(--layout-flex);
+    }
+    .scrollroot {
+      @apply(--layout-flex);
+      @apply(--layout-vertical);
+      @apply(--things-padding-clear);
+      @apply(--things-margin-clear);
+      overflow:auto;
+    }
+    .scrollroot::content #detail-view {
+      @apply(--layout-flex);
+    }
+    .title {
+      margin-left:20px !important;
+      font-size:20px;
+      font-weight:400;
+    }
+    .close-btn {
+      @apply(--things-header-button);
+      background:url(/images/icon-close.png) 100% 50% no-repeat;
+      margin-right:10px;
+    }
+    button:focus {
+      outline:none;
+    }
+  </style>
+
+  <template>
+    <paper-dialog
+      id='dialog' 
+      modal
+      entry-animation="scale-up-animation"
+      exit-animation="fade-out-animation"
+      always-on-top>
+      <paper-toolbar>
+        <span class="title">[[title]]</span>
+        <div class="buttonsGroup">
+          <button dialog-dismiss class="close-btn"></button>
+        </div>
+      </paper-toolbar>
+
+      <div id="scrollroot" class="scrollroot"></div>
+    </paper-dialog>
+  </template>
+
+  <script>
+    Polymer({
+      is: 'things-import-dialog',
+
+      properties: {
+        /**
+         * Title of Import Dialog
+         */
+        title: {
+          type: String
+        },
+
+        /**
+         * Import View 
+         */        
+        importView: {
+          type: Object
+        },
+
+        /**
+         * Import 제외 필드 
+         */
+        excludeFieldNames: {
+          type: Array,
+          value: function() {
+            return ['id', 'domain_id', 'creator_id', 'updater_id', 'creator', 'updater', 'created_at', 'updated_at'];
+          }
+        }
+      },
+
+      /**
+       * Open Import Dialog
+       *
+       * @param {Object} gridConfig
+       * @param {Array} gridModel
+       * @param {Array} gridColumns
+       * @param {Object} menuInfo
+       */
+      open: function(gridConfig, gridModel, gridColumns, menuInfo) {
+        var scrollable = this.$.scrollroot;
+
+        if(this.importView) {
+          try {
+            scrollable.removeChild(this.importView);
+          } catch(e) {
+            console.log(e);
+          }
+        }
+
+        this.title = (menuInfo ? menuInfo.title : '') + ' ' + Things.DataGlobal.t('button.import');
+        this.importView = document.createElement('things-import-grid');
+        this.importView.gridConfig = gridConfig;
+        this.importView.gridModel = this._handleGridModel(gridModel);
+        this.importView.gridColumns = this._handleGridColumns(gridColumns);
+        this.importView.menuInfo = menuInfo;
+        scrollable.appendChild(this.importView);
+        this.$.dialog.open();
+      },
+
+      /**
+       * Import 할 수 있는 형식으로 모델 정보 변경
+       *
+       * @param {Array} gridModel
+       * @return {Array} gridModel
+       */
+      _handleGridModel: function(gridModel) {
+        var newGridModel = [{ fieldName: '_status_' }];
+        for(var i = 0 ; i < gridModel.length ; i++) {
+          var model = gridModel[i];
+          if(this.excludeFieldNames.includes(model.fieldName)) continue;
+          newGridModel.push(model);
+        }
+
+        newGridModel.push({fieldName: '_result_'});
+        newGridModel.push({fieldName: '_message_'});
+        return newGridModel;
+      },
+
+      /**
+       * Import 할 수 있는 형식으로 컬럼 정보 변경
+       *
+       * @param {Array} gridColumns
+       * @return {Array} gridColumns
+       */
+      _handleGridColumns: function(gridColumns) {
+        var newGridColumns = [{
+          fieldName: '_status_',
+          name: '_status_',
+          width: 30,
+          imageList: 'images',
+          header: { text: ' ' },
+          renderer: { type: 'icon' },
+          styles: { 
+            iconIndex: 'indicator_edit.png',
+            iconLocation: 'center' 
+          },
+          styleCallback: function (index, styles) {
+            var status = index.getValue();
+
+            // 1. 기본 상태 
+            if(!status || status == '') {
+              styles.setIconIndex('indicator_insert.png');
+            // 2. 에러 상태 
+            } else if(status == 'F') {
+              styles.setIconIndex('error_error.png');
+            // 3. 준비 상태
+            } else if(status == 'R') {
+              styles.setIconIndex('error_info.png');
+            // 4. Import OK
+            } else if(status == 'S') {
+              styles.setIconIndex('menu_check.png');
+            }
+          }
+        }];
+
+        for(var i = 0 ; i < gridColumns.length ; i++) {
+          var gridColumn = gridColumns[i];
+          if(this.excludeFieldNames.includes(gridColumn.fieldName)) continue;
+          newGridColumns.push(gridColumn);
+        }
+
+        newGridColumns.push({fieldName: '_result_', width: 80, header : { text : 'Result' }});
+        newGridColumns.push({fieldName: '_message_', width: 250, header : { text : 'Message' }});
+        return newGridColumns;
+      }
+
+      /**
+       * Import 할 수 있는 형식으로 컬럼 정보 변경
+       *
+       * @param {Array} gridColumns
+       * @return {Array} gridColumns
+       */
+      /*_handleGridColumns: function(gridColumns) {
+        var newGridColumns = [], changedColumns = [];
+
+        for(var i = 0 ; i < gridColumns.length ; i++) {
+          var gridColumn = gridColumns[i];
+          if(this.excludeFieldNames.includes(gridColumn.fieldName)) continue;
+
+          var column = JSONfn.parse(JSONfn.stringify(gridColumn));
+          if(column.valueCallback && column.type == 'calced') {
+            delete column['valueCallback'];
+            delete column['type'];
+            delete column['valueType'];
+            changedColumns.push(column);
+
+          } else if(column.userObj && column.userObj.resourceName) {
+            changedColumn = changedColumns[changedColumns.length - 1];
+            changedColumn.userObj = { titleField : 'name' };
+            continue;
+          }
+            
+          newGridColumns.push(column);
+        }
+
+        newGridColumns.push({fieldName: '_result_', width: 80, header : { text : 'Result' }});
+        newGridColumns.push({fieldName: '_message_', width: 250, header : { text : 'Message' }});
+        return newGridColumns;
+      }*/
+    });
+  </script>
+</dom-module>

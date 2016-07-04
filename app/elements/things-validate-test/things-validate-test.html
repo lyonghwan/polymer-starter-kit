@@ -1,0 +1,15 @@
+<dom-module is="things-validate-test">
+	<template>
+		<things-input-field label="E-Mail" auto-validate validator="things-validator-email" error-message="email validator"></things-input-field>
+		<things-input-field label="Phone" auto-validate validator="things-validator-phone" error-message="phone validator"></things-input-field>
+		<things-date-picker label="A Month Ago" auto-validate validator="things-validator-a-month-ago" error-message="a month ago validator"></things-date-picker>
+		<things-date-picker label="Before Today" auto-validate validator="things-validator-before-today" error-message="before today validator"></things-date-picker>
+		<things-date-picker label="After Today" auto-validate validator="things-validator-after-today" error-message="after today validator"></things-date-picker>
+	</template>
+
+	<script>
+		Polymer({
+			is: 'things-validate-test'
+		})
+	</script>
+</dom-module>

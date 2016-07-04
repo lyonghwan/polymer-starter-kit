@@ -1,0 +1,316 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../bower_components/things-grid/things-resource-grid.html">
+
+<!--
+메뉴 기반 Import 그리드
+-->
+
+<dom-module id="things-import-grid">
+	<template>
+		<style>
+			:host {
+				display: block;
+				@apply(--layout-vertical);
+				@apply(--layout-flex);
+			}
+			
+			things-resource-grid {
+				@apply(--layout-flex);
+			}
+		</style>
+
+		<things-ajax 
+			id="create-ajax"
+			resource-action="update_multiple"
+			resource-url="[[updateMultipleUrl]]">
+		</things-ajax>
+
+		<things-ajax 
+			id="check-import-ajax"
+			method="POST"
+			content-type="application/json"
+			resource-url="[[checkImportUrl]]">
+		</things-ajax>
+
+		<things-resource-grid 
+			id="grid"
+			model="[[gridModel]]" 
+			columns="[[gridColumns]]"
+			config="[[gridConfig]]"
+			buttons="[[buttons]]"
+			data="[[items]]"
+			fixed-column-count="2"
+			grid-image-items="[[gridImageItems]]"
+			buttons="[[buttons]]">
+		</things-resource-grid>
+	</template>
+
+	<script>
+		Polymer({
+			is: 'things-import-grid',
+
+			properties: {
+				/**
+				 * 메뉴 정보
+				 */
+				menuInfo : {
+					type: Object,
+					observer: '_menuInfoChanged'
+				},
+
+				/**
+				 * Update Multiple URL
+				 */
+				updateMultipleUrl: {
+					type: String
+				},
+
+				/**
+				 * Check Import URL
+				 */
+				checkImportUrl: {
+					type: String
+				},
+
+				/**
+				 * Create Index
+				 */
+				createIndex: {
+					type: Number,
+					value: 0
+				},
+
+				/**
+				 * Items
+				 */
+				items: {
+					type: Array,
+					value: function() {
+						return [];
+					}
+				},
+
+				/**
+				 * 임시 Items
+				 */
+				tempItems: {
+					type: Array,
+					value: function() {
+						return [];
+					}
+				},
+
+				/**
+				* Grid에서 사용할 이미지 리스트 
+				*/
+				gridImageItems: {
+					type: Array,
+					value: function() {
+						return [
+							'iconDetail.png',
+							'ellipsis_hover.png',
+							'indicator_insert.png',
+							'menu_button.png',
+							'menu_button_hover.png',
+							'error_info.png',
+							'error_error.png',
+							'error_warning.png',
+							'indicator_edit.png',
+							'menu_check.png'
+						];
+					}
+				},
+
+				/**
+				* 버튼 
+				*/
+				buttons: {
+					type: Array,
+					value: [ {
+						id: 'check-btn',
+						text: 'check'
+					}, {
+						id: 'add-btn',
+						text: 'add'
+					}, {
+						id: 'delete-btn',
+						text: 'delete'
+					}, {
+						id: 'save-btn',
+						text: 'save'
+					}, {
+						id: 'export-btn',
+						text: 'export'
+					}, {
+						id: 'import-btn',
+						text: 'import'
+					} ]
+				}
+			},
+
+			listeners : {
+				'check-btn-tap' : '_checkForImport',
+				'grid.things-grid-import-finished' : '_importFinished',
+				'grid.things-grid-handle-build-writedata' : '_handleSetupGridWriteData',
+				'grid.things-grid-handle-save' : '_handleSave',
+				'create-ajax.things-ajax-response' : '_handleSaveSuccess',
+				'create-ajax.things-ajax-error' : '_handleSaveFailure',
+				'check-import-ajax.things-ajax-response' : '_handleCheckImportSuccess',
+				'check-import-ajax.things-ajax-error' : '_handleCheckImportFailure'
+			},
+
+			/**
+			 * Menu 정보가 변경되었을 때 
+			 */
+			_menuInfoChanged: function(menuInfo) {
+				this.updateMultipleUrl = menuInfo.resource_url + '/update_multiple';
+				this.checkImportUrl = menuInfo.resource_url + '/check_import';
+			},
+
+			/**
+			 * things-resource-grid를 리턴한다.
+			 */
+			getGrid: function() {
+				return this.$.grid;
+			},
+
+			/**
+			 * Import 전에 데이터 체크 
+			 *
+			 * @param {Object} event
+			 */
+			_checkForImport: function(event) {
+				if(!this.items || this.items.length == 0) return;
+
+				var checkImportAjax = this.$['check-import-ajax'];
+				checkImportAjax.body = this.items;
+				checkImportAjax.generateRequest();
+			},
+
+			/**
+			 * Import 완료된 이후 
+			 *
+			 * @param {Object} event
+			 */
+			_importFinished: function(event) {
+				var items = event.detail;
+				var refColumns = this._extractRefColumns();
+
+				items.forEach(function(item) {
+					for(var i = 0 ; i < refColumns.length ; i++) {
+						var refColumn = refColumns[i];
+						item[refColumn.name] = { id: null, name : item[refColumn.name] };
+					}
+				});
+
+				this.items = items;
+			},
+
+			/**
+			 * 참조 컬럼들을 추출한다.
+			 */
+			_extractRefColumns: function() {
+				var refColumns = [];
+
+				for(var i = 0 ; i < this.gridColumns.length ; i++) {
+					var column = this.gridColumns[i];
+					if(column.valueCallback && column.type == 'calced') {
+						refColumns.push(column);
+					}
+				}
+
+				return refColumns;
+			},
+
+			/**
+			 * 저장을 위해 그리드 데이터 셋업
+			 *
+			 * @param {Object} event
+			 */
+			_handleSetupGridWriteData: function(event) {
+				event.preventDefault();
+			},
+
+			/**
+			 * 저장 액션을 커스터마이징
+			 *
+			 * @param {Object} event
+			 */
+			_handleSave: function(event) {
+				event.preventDefault();
+				this.createIndex = 0;
+				this._createData();
+			},
+
+			/**
+			 * Create Import Data
+			 */
+			_createData: function() {
+				if(this.items.length > this.createIndex) {
+					var row = this.items[this.createIndex];
+					row.cud_flag_ = 'c';
+					var ajax = this.$['create-ajax'];
+					ajax.body = [row];
+					ajax.generateRequest();
+
+				} else {
+					this.items = this.tempItems;
+					this.tempItems = [];
+					this.createIndex = 0;
+				}
+			},
+
+			/**
+			 * 저장 성공시 액션
+			 *
+			 * @param {Object} event
+			 */
+			_handleSaveSuccess: function(event) {
+				var successItem = this.items[this.createIndex];
+				successItem._result_ = 'OK';
+				successItem._status_ = 'S';
+				this.tempItems[this.createIndex] = successItem;
+				this.createIndex += 1;
+				this._createData();
+			},
+
+			/**
+			 * 저장 실패시 액션
+			 *
+			 * @param {Object} event
+			 */
+			_handleSaveFailure: function(event) {
+				var failureItem = this.items[this.createIndex];
+				failureItem._result_ = 'Failure';
+				failureItem._status_ = 'F';
+				failureItem._message_ = event.detail.request.xhr.response.msg;
+				this.tempItems[this.createIndex] = failureItem;
+				this.createIndex += 1;
+				this._createData();
+			},
+
+			/**
+			 * Import Check 성공시 액션
+			 *
+			 * @param {Object} event
+			 */
+			_handleCheckImportSuccess: function(event) {
+				var items = event.detail;
+				items.forEach(function(item) { item._status_ = 'R'; });
+				this.items = items;
+			},
+
+			/**
+			 * Import Check 실패시 액션
+			 *
+			 * @param {Object} event
+			 */
+			_handleCheckImportFailure: function(event) {
+				console.log(event);
+			}
+
+		});
+	</script>
+</dom-module>

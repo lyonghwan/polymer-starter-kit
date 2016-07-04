@@ -1,0 +1,304 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../../bower_components/iron-icon/iron-icon.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../../bower_components/things-view-open-behavior/things-view-open-behavior.html">
+<link rel="import" href="../../../bower_components/things-grid/things-resource-grid.html">
+
+<!--
+  커스텀 서비스의 Input / Output Parameter 관리 화면 
+-->
+
+<dom-module id="things-base-diy-service-detail-inout">
+  <template>
+    <style>
+      :host {
+        display:block;
+        @apply(--layout-vertical);
+      }
+      things-resource-grid {
+        @apply(--layout-flex);
+      }
+    </style>
+
+    <things-ajax 
+      auto
+      id="get-params"
+      method="GET"
+      resource-url="[[gridSearchUrl]]"
+      last-response="{{items}}">
+    </things-ajax>
+
+    <things-resource-grid 
+      id="grid"
+      config="[[gridConfig]]"
+      model="[[gridModel]]" 
+      columns="[[gridColumns]]"
+      data="[[items]]"
+      grid-save-action="[[gridSaveUrl]]"
+      buttons="[[buttons]]">
+    </things-resource-grid>
+  </template>
+
+  <script>
+    Polymer({
+
+      is: 'things-base-diy-service-detail-inout',
+
+      properties: {
+
+        /**
+         * DiyService Id
+         */
+        resourceId: {
+          type: String
+        },
+
+        /**
+         * entity resource
+         */
+        resource: {
+          type: Object,
+          observer: '_onResourceChanged'
+        },
+
+        /**
+         * entity columns 조회 정보 
+         */
+        items: {
+          type: Array
+        },        
+
+        /**
+         * in / out
+         */
+        mode: {
+          type: String
+        },
+
+        /**
+         * grid model
+         */
+        gridModel: {
+          type: Array,
+          value: [ { 
+            fieldName: 'id' 
+          }, { 
+            fieldName: 'name' 
+          }, { 
+            fieldName: 'resource_id' 
+          }, { 
+            fieldName: 'resource_type' 
+          }, { 
+            fieldName: 'rank' 
+          }, { 
+            fieldName: 'description'
+          }, { 
+            fieldName: 'data_type' 
+          }, { 
+            fieldName: 'nullable'
+          } ]
+        },
+        
+        /**
+         * grid columns
+         */
+        gridColumns: {
+          type: Array,
+          value: [] 
+        },
+
+        /**
+         * DiySearch In/Out Parameters Search URL
+         */
+        gridSearchUrl: {
+          type: String,
+          computed: '_computeInoutSearchUrl(resourceId,mode)'
+        },
+
+        /**
+         * DiySearch In/Out Parameters Save URL
+         */
+        gridSaveUrl: {
+          type: String,
+          computed: '_computeInoutSaveUrl(resourceId,mode)'
+        },
+
+        /**
+         * 버튼 정보 
+         */
+        buttons: {
+          type: Array,
+          value: [ {
+            id: 'add-btn',
+            text: 'add',
+            icon: 'icons:add'
+          }, {
+            id: 'save-btn',
+            text: 'save',
+            icon: 'icons:save'
+          }, {
+            id: 'delete-btn',
+            text: 'delete',
+            icon: 'icons:delete'
+          } ]
+        }
+      },
+
+      listeners: {
+        'get-params.things-ajax-response': '_onParametersSaved',
+        'grid.things-grid-handle-save' : '_beforeParamsSave',
+        'grid.things-grid-save-success' : 'reloadGrid'
+      },
+      attached:function () {
+         this.gridColumns=[ { 
+            fieldName: 'id', name: 'id', width: 0 
+          }, { 
+            fieldName: 'resource_id', name: 'resource_id', width: 0 
+          }, { 
+            fieldName: 'resource_type', name: 'resource_type', width: 0
+          }, { 
+            fieldName: 'rank', name: 'rank', width: 60,
+            header: { 
+              text: Things.DataGlobal.t('label.rank')
+            },
+            styles: { textAlignment: 'far' }
+          }, { 
+            fieldName: 'name', name: 'name', width: 250,
+            header: { 
+              text: Things.DataGlobal.t('label.name')
+            }
+          }, { 
+            fieldName: 'description', name: 'description', width: 350,
+            header: {
+              text: Things.DataGlobal.t('label.description')
+           }
+          }, { 
+            name: 'data_type', 
+            fieldName: 'data_type', 
+            width: 120,
+            lookupDisplay: true,
+            header: { 
+              text: Things.DataGlobal.t('label.col_type') 
+            },
+            editor: { 
+              type: 'list', 
+              domainOnly: true 
+            },
+            lookupValues: [
+              '',
+              'binary',
+              'boolean',
+              'date',
+              'datetime',
+              'decimal',
+              'double',
+              'float',
+              'integer',
+              'long',
+              'string',
+              'text',
+              'time',
+              'timestamp'
+            ],
+            lookupLabels: [
+              '',
+              'binary',
+              'boolean',
+              'date',
+              'datetime',
+              'decimal',
+              'double',
+              'float',
+              'integer',
+              'long',
+              'string',
+              'text',
+              'time',
+              'timestamp'
+            ] 
+          }, { 
+            name: 'nullable', 
+            fieldName: 'nullable', 
+            width: 80,
+            editable: false,
+            header: { 
+              text: Things.DataGlobal.t('label.nullable') 
+            },
+            renderer: {
+              type:'check', 
+              editable: true, 
+              threeStates: false, 
+              trueValues: 'true', 
+              falseValues: 'false'
+            }
+          } ] 
+      },
+      /**
+       * Resource 변경시
+       *
+       * @param {Object} resource
+       */
+      _onResourceChanged: function(resource) {
+        this.resourceId = resource.id;
+        this.items = (this.mode == 'in') ? this.resource.service_in_params : this.resource.service_out_params;
+      },
+
+      /**
+       * DiyServiceId, Mode(in/out) 데이터로 In/Out Parameters Search URL 생성
+       *
+       * @param {String} resourceId
+       * @param {String} mode
+       * @return {String} in/out parameteres search url
+       */
+      _computeInoutSearchUrl: function(resourceId, mode) {
+        return 'diy_services/' + resourceId + '/parameters/' + mode;
+      },
+
+      /**
+       * DiyServiceId, Mode(in/out) 데이터로 In/Out Parameters Save URL 생성
+       *
+       * @param {String} resourceId
+       * @param {String} mode
+       * @return {String} in/out parameteres save url
+       */
+      _computeInoutSaveUrl: function(resourceId, mode) {
+        return 'diy_services/' + resourceId + '/update_multiple_parameters/' + mode;
+      },
+
+      /**
+       * in/out Parameter 저장 후 
+       */
+      _onParametersSaved: function(event) {
+        if(this.mode == 'out') {
+          this.resource.service_out_params = event.detail;
+        } else {
+          this.resource.service_in_params = event.detail;
+        }
+      },      
+
+      /**
+       * In/Out Parameters 저장 전에...
+       */
+      _beforeParamsSave: function(event) {
+        var grid = event.target;
+        if(grid.writeData && grid.writeData.length > 0) {
+          var resourceId = this.resourceId;
+          grid.writeData.forEach(function(changedData) {
+            if(changedData.cud_flag_ == 'c') {
+              changedData.resource_type = 'DiyService';
+              changedData.resource_id = resourceId;
+            }
+          });
+        }
+      },      
+
+      /**
+       * reload grid data
+       */
+      reloadGrid: function(e) {
+        this.$['get-params'].generateRequest();
+      }
+    });
+  </script>
+</dom-module>

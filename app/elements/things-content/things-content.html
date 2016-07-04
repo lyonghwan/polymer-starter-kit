@@ -1,0 +1,187 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../bower_components/iron-icon/iron-icon.html">
+<link rel="import" href="../../bower_components/iron-icons/iron-icons.html">
+<link rel="import" href="../../bower_components/iron-icons/social-icons.html">
+<link rel="import" href="../../bower_components/iron-icons/maps-icons.html">
+<link rel="import" href="../../bower_components/iron-iconset/iron-iconset.html">
+<link rel="import" href="../../bower_components/iron-iconset-svg/iron-iconset-svg.html">
+<link rel="import" href="../../bower_components/paper-icon-button/paper-icon-button.html">
+
+<link rel="import" href="../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../bower_components/things-button/things-button.html">
+<link rel="import" href="../../bower_components/things-form/things-resource-form.html">
+<link rel="import" href="../../bower_components/things-form/things-search-form.html">
+<link rel="import" href="../../bower_components/things-paginator/things-paginator.html">
+
+<link rel="import" href="../../bower_components/things-view-open-behavior/things-view-open-behavior.html">
+
+<!--
+A comment describing this element
+
+Example:
+
+    <my-elem></my-elem>
+
+Example:
+
+    <my-elem>
+      <h2>Hello my-elem</h2>
+    </my-elem>
+
+@demo demo/index.html
+-->
+
+<dom-module id="things-content">
+	<template>
+		<style>
+			:host {
+				display: block;
+				height: 100%;
+			}
+		</style>
+
+		<div class="[[layout]]">
+			<things-ajax 
+				auto
+				resource-url="[[searchFieldUrl]]" 
+				method="GET"
+				last-response="{{searchFormFields}}">
+			</things-ajax>
+
+			<things-search-form 
+				id="search-form"
+				class="flex"
+				title="[[title]]"
+				form-fields="[[searchFormFields]]" 
+				action="{{searchActionUrl}}" 
+				method="GET"
+				content-type="application/json"
+				output="{{gridData}}"
+				page="{{page}}"
+				limit="{{limit}}"
+				total-count="{{totalCount}}">
+			</things-search-form>
+
+			<things-ajax 
+				auto
+				resource-url="[[gridFieldUrl]]" 
+				method="GET"
+				last-response="{{gridFields}}">
+			</things-ajax>
+
+			<things-ajax 
+				auto
+				resource-url="[[gridColumnUrl]]" 
+				method="GET"
+				last-response="{{gridColumns}}">
+			</things-ajax>
+
+			<things-grid 
+				id="grid"
+				class="flex"
+				fields="[[gridFields]]" 
+				columns="[[gridColumns]]" 
+				input="[[gridData]]"
+				root-property="items"
+				total-property="total"
+				selected-row-data="{{selectedRow}}"
+				output="{{gridOuput}}"
+				page="{{page}}"
+				limit="{{limit}}"
+				total-count="{{totalCount}}">
+			</things-grid>
+
+			<things-ajax 
+				auto
+				resource-url="[[formFieldUrl]]" 
+				method="GET"
+				last-response="{{resourceFormFields}}">
+			</things-ajax>
+
+			<things-resource-form 
+				id="resource-form"
+				title="Item Detail"
+				form-fields="[[resourceFormFields]]" 
+				input="{{selectedRow}}"
+				action="{{formSaveActionUrl}}"
+				get-resource-url="{{getResourceUrl}}">
+			</things-resource-form>
+		</div>
+	</template>
+
+	<script>
+		Polymer({
+			is: 'things-content',
+
+			behaviors: [ 
+				Things.GlobalBehavior,
+				Things.ViewOpenBehavior
+			],
+			
+			properties: {
+				layout: {
+					type: String
+				},
+				searchFieldUrl: {
+					type: String
+				},
+				searchActionUrl: {
+					type: String
+				},
+				formFieldUrl: {
+					type: String
+				},
+				formSaveActionUrl: {
+					type: String
+				},				
+				gridFieldUrl: {
+					type: String
+				},
+				gridColumnUrl: {
+					type: String
+				},
+				gridOuput: {
+					type: Object
+				},
+				gridColumns: {
+					type: Array
+				},
+				gridFields: {
+					type: Array
+				},
+				gridData: {
+					type: Array
+				},
+				selectedRow: {
+					type: Object
+				}
+			},
+
+			listeners : {
+				'grid.on-detail-clicked': '_showResourceForm',
+				'grid.refresh-data': '_refreshGridData',
+				'resource-form.resource-saved' : '_refreshGridData'
+			},			
+			
+			/**
+			 * open resource form dialog
+			 */
+			_showResourceForm: function(row) {
+				this.$['resource-form'].resource = row;
+				this.openPopupView(this.$['resource-form'], true);
+
+				var me = this;
+				viewElement.addEventListener('things-resource-form-saved', function(e) {
+					me.closePopupView();
+					me._refreshGridData();
+				});
+			},
+
+			_refreshGridData:function(grid){
+				this.$['search-form']._getForm().submit();
+			}
+
+		});
+	</script>
+</dom-module>

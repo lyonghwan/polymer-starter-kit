@@ -1,0 +1,160 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../../bower_components/iron-pages/iron-pages.html">
+<link rel="import" href="../../../bower_components/paper-header-panel/paper-header-panel.html">
+<link rel="import" href="../../../bower_components/paper-tabs/paper-tab.html">
+<link rel="import" href="../../../bower_components/paper-tabs/paper-tabs.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../../bower_components/things-detail/things-detail-tab-view-behavior.html">
+<link rel="import" href="../../../bower_components/things-form/things-resource-form.html">
+
+<link rel="import" href="./things-base-menu-setup-columns.html">
+<link rel="import" href="./things-base-menu-setup-buttons.html">
+<link rel="import" href="./things-base-menu-setup-search.html">
+<link rel="import" href="./things-base-menu-setup-grid.html">
+<link rel="import" href="./things-base-menu-setup-form.html">
+
+<!--
+  Menu 셋업 View
+-->
+
+<dom-module id="things-base-menu-setup">
+  <template>
+    <style>
+      :host {
+        display: block;
+        height: 100%;
+        width: 100%;
+        @apply(--layout-vertical);
+        --paper-header-panel-standard-container: {
+            @apply(--layout-vertical);
+        };
+      }
+      paper-header-panel {
+        @apply(--layout-flex);
+        @apply(--layout-vertical);
+      }
+      .iron-pages {
+        @apply(--layout-flex);
+        @apply(--layout-vertical);
+      }
+      .detail-flex {
+        @apply(--layout-flex);
+      }
+    </style>
+
+    <paper-header-panel mode="standard" class="green">
+      <paper-tabs id="tabGroup" class="paper-header" selected="{{currentTabIdx}}" noink scrollable>
+        <template is="dom-repeat" items="{{_panels}}">
+          <paper-tab id="{{item.elementId}}">{{item.title}}</paper-tab>
+        </template>
+      </paper-tabs>
+
+      <things-ajax 
+        auto
+        id="get-resource"
+        method="GET"
+        resource-url="menus/:id/menu_meta?no_trans_term=true"
+        resource-id="[[resourceId]]"
+        last-response="{{menuMeta}}">
+      </things-ajax>
+
+      <iron-pages id="tabPages" selected="{{currentTabIdx}}" class="iron-pages">
+        <things-resource-form
+          id="resource-form" 
+          resource-url="[[resourceUrl]]"
+          resource="{{menuMeta.menu}}"
+          form-fields="[[formFields]]"
+          remove-fields-on-save="[[removeFieldsOnSave]]">
+        </things-resource-form>
+
+        <things-base-menu-setup-columns
+          class="detail-flex"
+          resource-id="[[resourceId]]"
+          menu-meta="{{menuMeta}}">
+        </things-base-menu-setup-columns>
+
+        <things-base-menu-setup-search
+          class="detail-flex"
+          resource-id="[[resourceId]]"
+          menu-meta="{{menuMeta}}">
+        </things-base-menu-setup-search>
+
+        <things-base-menu-setup-grid
+          class="detail-flex"
+          resource-id="[[resourceId]]"
+          menu-meta="{{menuMeta}}">
+        </things-base-menu-setup-grid>
+
+        <things-base-menu-setup-form
+          class="detail-flex"
+          resource-id="[[resourceId]]"
+          menu-meta="{{menuMeta}}">
+        </things-base-menu-setup-form>
+
+        <things-base-menu-setup-buttons
+          class="detail-flex"
+          resource-id="[[resourceId]]"
+          menu-meta="{{menuMeta}}">
+        </things-base-menu-setup-buttons>
+      </iron-pages>
+    </paper-header-panel>
+  </template>
+
+  <script>
+    Polymer({
+
+      is: 'things-base-menu-setup',
+
+      behaviors: [ 
+        Things.DetailTabViewBahavior
+      ],
+
+      properties: {
+
+        /**
+         * Menu Meta Data
+         * 데이터 형식 : { menu : Object, buttons: Array, columns: Array }
+         */
+        menuMeta: {
+          type: Object,
+          notify: true
+        },
+
+        /**
+         * Save 하기 전에 폼에는 있지만 Save하는데 필요 없는 필드를 삭제하기 위한 필드명
+         */
+        removeFieldsOnSave: {
+          type: Array,
+          value: ['creator', 'updater', 'creator_id', 'updater_id', 'created_at', 'updated_at']
+        }
+      },
+
+      /**
+       * Life cycle - Element Ready
+       */
+      ready: function() {
+        this._panels = [ {
+          title: Things.DataGlobal.t('title.basic_info'), 
+          elementId: 'things-resource-form'
+        }, {
+          title: Things.DataGlobal.t('title.setup_columns'), 
+          elementId: 'things-base-menu-setup-columns'
+        }, {
+          title: Things.DataGlobal.t('title.setup_searching'), 
+          elementId: 'things-base-menu-setup-search'
+        }, {
+          title: Things.DataGlobal.t('title.setup_grid'), 
+          elementId: 'things-base-menu-setup-grid'
+        }, {
+          title: Things.DataGlobal.t('title.setup_form'), 
+          elementId: 'things-base-menu-setup-form'
+        }, {
+          title: Things.DataGlobal.t('title.setup_button'), 
+          elementId: 'things-base-menu-setup-buttons'
+        } ];
+      }
+
+    });
+  </script>
+</dom-module>

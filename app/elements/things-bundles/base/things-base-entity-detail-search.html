@@ -1,0 +1,427 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../../bower_components/paper-icon-button/paper-icon-button.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../../bower_components/things-grid/things-resource-grid.html">
+<link rel="import" href="../../../bower_components/things-msg-box-behavior/things-msg-box-behavior.html">
+<link rel="import" href="../../../bower_components/things-view-open-behavior/things-view-open-behavior.html">
+
+<dom-module id="things-base-entity-detail-search">
+  <template>
+    <style>
+      :host {
+        display: block;
+        @apply(--layout-vertical);
+      }
+      iron-pages {
+        @apply(--layout-flex);
+        @apply(--layout-vertical);
+      }
+      things-resource-grid {
+        @apply(--layout-flex);
+      }
+    </style>
+
+    <things-ajax 
+      id="delete-service" 
+      method="DELETE">
+    </things-ajax>    
+    
+    <things-resource-grid 
+      id="grid"
+      config="[[gridConfig]]"
+      model="[[gridModel]]" 
+      columns="[[gridColumns]]"
+      data="[[items]]"
+      grid-save-action="[[gridSaveUrl]]"
+      buttons="[[buttons]]">
+    </things-resource-grid>
+  </template>
+
+  <script>
+    Polymer({
+
+      is: 'things-base-entity-detail-search',
+
+      behaviors: [
+        Things.MsgBoxBehavior,
+        Things.ViewOpenBehavior
+      ],
+
+      properties: {
+        /**
+         * Entity 조회 정보 
+         */
+        lastResponse: {
+          type: Object,
+          observer: '_responseChanged'
+        },
+
+        /**
+         * Entity Id
+         */
+        resourceId: {
+          type: String
+        },
+
+        /**
+         * Entity Columns
+         */
+        resourceColumns: {
+          type: Array,
+          notify: true,
+          observer: '_resourceColumnsChanged'
+        },
+
+        /**
+         * resourceColumns를 가공한 Grid에 표시할 실제 Entity Columns 데이터 
+         */
+        items: {
+          type: Array
+        },
+
+        /**
+         * Grid Model 
+         */
+        gridModel: {
+          type: Array
+        },
+
+        /**
+         * Grid Column 
+         */
+        gridColumns: {
+          type: Array
+        },
+
+        /**
+         * Entity Column save URL
+         */
+        gridSaveUrl: {
+          type: String,
+          computed: '_computeEntityColumnSaveUrl(resourceId)'
+        },
+
+        /**
+         * Grid Columns
+         */
+        gridColumns: {
+          type: Array,
+          value: function() {
+            var colTypes = ['', 'binary', 'boolean', 'date', 'datetime', 'decimal', 'double', 'float', 'integer', 'long', 'string', 'text', 'time', 'timestamp'];
+            var editors = [
+              '', 'hidden', 'readonly', 'checkbox', 'text', 'code-combo', 'number',
+              'textarea', 'resource-field', 'resource-selector', 'date-picker', 
+              'time-picker', 'datetime-picker', 'date-from-to-picker', 'tristate-radio'
+            ];            
+            var searchOpers = ['', 'contains', 'dnew', 'dnsw', 'eq', 'ew', 'gt', 'gte', 'between', 'in', 'is_blank', 'is_false', 'is_not_false', 'is_not_null','is_not_true', 'is_null', 'is_present', 'is_true', 'like','lt', 'lte', 'nlike', 'noteq', 'notin', 'sw' ];
+
+            return [ { 
+              fieldName: 'id', name: 'id', width: 0 
+            }, { 
+              fieldName: 'entity_id', name: 'entity_id', width: 0 
+            }, { 
+              fieldName: 'search_rank', name: 'search_rank', width: 60, type: 'number',
+              header: { 
+                text: Things.DataGlobal.t('label.rank')
+              },
+              styles: { 
+                textAlignment: 'far' 
+              }
+            }, { 
+              fieldName: 'name', name: 'name', width: 135,
+              header: { 
+                text: Things.DataGlobal.t('label.name')
+              }
+            }, { 
+              fieldName: 'term', name: 'term', width: 135,
+              header: { 
+                text: Things.DataGlobal.t('label.term')
+              },
+              valueType: 'text', type: 'calced',
+              valueCallback: function(column, row) {
+                var term = row.getValue('term');
+                return term ? Things.DataGlobal.t(term) : '';
+              }
+            }, { 
+              name: 'col_type', 
+              fieldName: 'col_type', 
+              width: 100,
+              lookupDisplay: true,
+              header: { 
+                text: Things.DataGlobal.t('label.col_type') 
+              },
+              editor: { 
+                type: 'list', 
+                domainOnly: true 
+              },
+              lookupValues: colTypes,
+              lookupLabels: colTypes
+            }, { 
+              fieldName: 'ref_type', name: 'ref_type', width: 115, editable: false,
+              header: { 
+                text: Things.DataGlobal.t('label.ref_type') 
+              }
+            }, { 
+              fieldName: 'ref_name', name: 'ref_name', width: 135, editable: false,
+              header: {
+                text: Things.DataGlobal.t('label.ref_name')
+             }              
+            }, { 
+              fieldName: 'sort_rank', name: 'sort_rank', width: 80, type: 'number',
+              header: { 
+                text: Things.DataGlobal.t('label.sort_rank')
+              },
+              styles: { 
+                textAlignment: 'far' 
+              }
+            }, { 
+              fieldName: 'reverse_sort', name: 'reverse_sort', width: 100, editable: false,
+              header: { 
+                text: Things.DataGlobal.t('label.reverse_sort')
+              },
+              renderer: {
+                type:'check', 
+                editable: true, 
+                threeStates: false, 
+                trueValues: 'true', 
+                falseValues: 'false'
+              }
+            }, {
+              name: 'search_editor', 
+              fieldName: 'search_editor', 
+              width: 120,
+              lookupDisplay: true,
+              header: { 
+                text: Things.DataGlobal.t('label.editor') 
+              },
+              editor: { 
+                type: 'list', 
+                domainOnly: true 
+              },
+              lookupValues: editors,
+              lookupLabels: editors              
+            }, {
+              fieldName: 'search_oper', 
+              name: 'search_oper', 
+              width: 120,
+              lookupDisplay: true,
+              header: { 
+                text: Things.DataGlobal.t('label.search_oper') 
+              },
+              editor: { 
+                type: 'list', 
+                domainOnly: true 
+              },
+              lookupValues: searchOpers,
+              lookupLabels: searchOpers
+            } ];
+          }
+        },
+
+        /**
+         * 버튼 정보 
+         */
+        buttons: {
+          type: Array,
+          value: [ {
+            id: 'delete-table-btn',
+            text: 'delete table'
+          }, {
+            id: 'delete-entity-btn',
+            text: 'delete entity'
+          }, {
+            id: 'delete-svc-btn',
+            text: 'delete service'
+          }, {
+            id: 'save-btn',
+            text: 'save'
+          }, {
+            id: 'delete-btn',
+            text: 'delete'
+          } ]
+        }
+      },
+
+      listeners: {
+        'things-detail-view-selected' : '_myTabSelected',
+        'grid.things-grid-handle-built-writedata' : '_setupWriteData',
+        'grid.things-grid-save-success' : '_responseTransaction',
+        'delete-table-btn-tap' : 'deleteTable',
+        'delete-entity-btn-tap' : 'deleteEntity',
+        'delete-svc-btn-tap' : 'deleteService'
+      },
+
+      /**
+       * Delete Table
+       *
+       * @param {Object} e 버튼 클릭 이벤트 
+       */
+      deleteTable: function(e) {
+        if(this.resource.table_name) {
+          this._confirmAndInvoke(function() {
+            var service = this.$['delete-service'];
+            service.resourceUrl = 'code_generator/code/table/' + this.resourceId;
+            service.generateRequest();
+          }.bind(this));
+
+        } else {
+          this._warningNotReady();
+        }        
+      },
+
+      /**
+       * Delete Entity
+       *
+       * @param {Object} e 버튼 클릭 이벤트 
+       */
+      deleteEntity: function(e) {
+        if(this.resource.table_name) {
+          this._confirmAndInvoke(function() {
+            var service = this.$['delete-service'];
+            service.resourceUrl = 'code_generator/code/entity/' + this.resourceId;
+            service.generateRequest();
+          }.bind(this));
+
+        } else {
+          this._warningNotReady();
+        }
+      },
+
+      /**
+       * Delete Service
+       *
+       * @param {Object} e 버튼 클릭 이벤트 
+       */
+      deleteService: function(e) {
+        if(this.resource.table_name) {
+          this._confirmAndInvoke(function() {
+            var service = this.$['delete-service'];
+            service.resourceUrl = 'code_generator/code/controller/' + this.resourceId;
+            service.generateRequest();
+          }.bind(this));
+
+        } else {
+          this._warningNotReady();
+        }
+      },
+
+      /**
+       * 서비스 호출 준비가 안 된 상태라는 메시지 출력 
+       */
+      _warningNotReady: function() {
+        var tableName = Things.DataGlobal.t('label.table_name');
+        var msg = Things.DataGlobal.t('error.SHOULD_NOT_BE_EMPTY', { value : tableName });
+
+        this.openInfoMsg({
+          type : 'warning',
+          title : msg,
+          showCancelButton: true,
+          closeOnConfirm : true
+        });
+      },      
+
+      /**
+       * 사용자에게 확인 후 서비스 호출
+       */
+      _confirmAndInvoke: function(func) {
+        this.openConfirmMsg({
+          type : 'info',
+          title : Things.DataGlobal.t('text.Sure to Delete'),
+          showCancelButton: true,
+          closeOnConfirm : true
+        }, func);
+      },      
+
+      /**
+       * 상세 탭 선택시 ...
+       */
+      _myTabSelected: function(e) {
+        this.$.grid.resizeGrid();
+      },
+
+      /**
+       * Entity Id로 Entity Column Save URL 생성
+       *
+       * @param {String} resourceId
+       * @return {String} Save entity columns url
+       */
+      _computeEntityColumnSaveUrl: function(resourceId) {
+        return 'entities/' + resourceId + '/update_multiple_entity_columns.json';
+      },
+
+      /**
+       * 조회 데이터 변경
+       *
+       * @param {Object} lastResponse
+       */
+      _responseChanged: function(lastResponse) {
+        this.resourceColumns = lastResponse.items ? lastResponse.items : [];
+      },
+
+      /**
+       * resourceColumns 변경시 
+       *
+       * @param {Object} lastResponse
+       */
+      _resourceColumnsChanged: function(resourceColumns) {
+        var items = null;
+
+        if(resourceColumns && resourceColumns.length > 0) {
+          items = resourceColumns.filter(function(column) { 
+            return (column.search_rank && column.search_rank > 0) || (column.sort_rank && column.sort_rank > 0); 
+          });
+          if(items && items.length > 0) this._sortColumns(items, 'search_rank');
+        }
+
+        this.items = items ? items : [];
+      },
+
+      /**
+       * list sorting
+       */
+      _sortColumns: function(list, sortField) {
+        list.sort(function(a, b) {
+          return (a[sortField] > b[sortField]) ? 1 : ((b[sortField] > a[sortField]) ? -1 : 0);
+        });
+      },      
+
+      /**
+       * Grid에서 업데이트할 writeData 셋업이 완료된 후 writeData 조작
+       *
+       * @param {Object} event
+       */
+      _setupWriteData: function(event) {
+        var writeData = event.detail;
+        if(writeData && writeData.length > 0) {
+          var entityId = this.resourceId;
+
+          writeData.forEach(function(changedData) {
+            changedData.entity_id = entityId;
+            if(!changedData.uniq_rank) changedData.uniq_rank = 0;
+
+
+            if(!changedData.search_rank || 0 == changedData.search_rank || '0' === changedData.search_rank) {
+              changedData.search_check = false;
+            }
+
+            delete changedData['ref_name_editor'];
+            delete changedData['trans'];
+            delete changedData['search_check'];
+            delete changedData['grid_check'];
+          });
+        }
+      },
+
+      /**
+       * Entity Column 관련 트랜잭션 성공 후 
+       *
+       * @param {Object} e 트랜잭션 성공 이벤트 
+       */
+      _responseTransaction: function(e) {
+        this.lastResponse = e.detail;
+      }
+
+    });
+  </script>
+</dom-module>

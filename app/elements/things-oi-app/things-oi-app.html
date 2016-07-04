@@ -1,0 +1,286 @@
+<!--
+@license
+Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+<link rel="import" href="things-oi-import.html">
+
+<dom-module id="things-oi-app">
+  <template>
+    <style include="shared-styles">
+      @import "theme.css";
+    </style>
+
+    <style is="custom-style">
+      app-drawer {
+        --app-drawer-content-container: {
+        background-color: #B0BEC5;
+        @apply(--layout-vertical);
+        };
+        --app-drawer-width : 170px;
+      }
+      .user-menu {
+        background-color:rgba(0,0,0,.3);
+        padding:5px;
+      }
+      app-header-layout {
+        @apply(--layout-fullbleed);
+        @apply(--layout-vertical);
+      }
+      app-header-layout::shadow #contentContainer {
+        @apply(--layout-vertical);
+        @apply(--layout-flex);
+      }
+      #scrollingRegion {
+        overflow-y: auto;
+        /* fixes scroll track's z-index bug in safari*/
+        -webkit-transform: translateZ(0);
+        @apply(--layout-flex);
+        @apply(--layout-vertical);
+        padding:15px;
+      }
+      things-sidebar {
+        @apply(--layout-flex);
+        --things-sidebar-panel: {
+          @apply(--layout-flex);
+        }
+      }
+      iron-pages {
+        @apply(--layout-vertical);
+        @apply(--layout-flex);
+      }
+      things-logout::shadow paper-icon-button {
+        @apply(--things-small-icon);
+        float:right;
+        top:1px;left:37px;
+      }
+      app-toolbar {
+        @apply(--things-oi-header);
+      }
+      app-toolbar #fullscreen-btn,app-toolbar #infoBtn{
+        @apply(--things-header-button);
+        color:#41d0ff;
+      }
+      app-toolbar #fullscreen-btn{
+        background:url(/images/icon-fullscreen.png) 50% 50% no-repeat;
+      }
+      app-toolbar #fullscreen-btn:focus,app-toolbar #infoBtn:focus{
+        outline:none
+      }
+      paper-toolbar{
+        @apply(--things-oi-search-form);
+        height:initial;
+      }
+      paper-toolbar::shadow #topBar{
+        padding:0;
+        height:initial;
+      }
+      paper-toolbar .title {
+        margin-left:32px !important;
+        line-height:initial !important;
+      }
+      things-date-picker::shadow paper-icon-button.things-date-picker{
+        background-position:55% -94px;
+      }
+      things-code-combo::shadow iron-icon.things-combo {
+        background-position:54% -43px;
+      }
+      things-resource-selector::shadow iron-icon.things-resource-selector {
+        background-position:54% 6px;
+      }
+      #vertical-div {
+        @apply(--layout-vertical);
+      }
+      things-sidebar::shadow .brand{
+        background:url(/images/icon-brand.png) no-repeat #1D4667;
+      }
+      things-profile{
+        background-color:transparent;
+      }
+      paper-toolbar things-date-picker,paper-toolbar things-code-combo,paper-toolbar things-resource-selector{
+        width:47%;
+        float:left;
+      }
+      .orderinfo{
+        flex-1;
+        width:20%;
+      }
+      .routinginfo{
+        flex-4;
+        width:80%;
+      }
+      span.subtitle{
+        @apply(--things-subtitle);
+      }
+      span.subtitle:before{
+        @apply(--things-subtitle-icon);
+      }
+      things-wip-routing-detail::shadow things-wip-routing-detail-scrollable{
+        width:100%;
+      }
+      #drawerArea:-webkit-full-screen  { width: 100% }
+      #drawerArea:-moz-full-screen   { width: 100% }
+      #drawerArea:-ms-full-screen    { width: 100% }
+      #drawerArea:-o-full-screen   { width: 100% }
+      #drawerArea:full-screen      { width: 100% }
+    </style>
+    
+    <!-- local storage -->
+    <iron-localstorage 
+      id="localStorage" 
+      name="{$ appName $}" 
+      value="{{storage}}" 
+      on-iron-localstorage-load-empty="initializeDefaultStorage">
+    </iron-localstorage>
+
+    <!-- OI Layout -->
+    <app-drawer-layout id="drawerArea" esponsive-width="{$ responsiveWidth $}">
+      <app-drawer id="appDrawer" swipe-open>
+        <things-sidebar
+          id ="sidebar"
+          menu-category ="TERMINAL"
+          drawer-id='paperDrawerPanel' 
+          page-content-id='_content_'
+          class="layout vertical" 
+          title="Elidom" 
+          screens="{{screens}}" 
+          resource-screens="{{resourceScreens}}"
+          diy-screens="{{diyScreens}}"
+          selected-menu ="{{selectedMenu}}"
+          resource-url="menus.json?mode=auth"
+          resource-action="index">
+          <div class="user-menu header">
+            <!-- sidebar header toolbar menu start-->
+            <things-profile></things-profile>
+            <!-- oi entrance -->
+            <things-oi-entrance></things-oi-entrance>
+            <!-- setting -->
+            <things-setting></things-setting>
+            <!-- logout -->
+            <things-logout id="logout" action="logout" icon="icons:power-settings-new"></things-logout>
+            <!-- sidebar header toolbar menu end -->
+          </div>
+        </things-sidebar>
+      </app-drawer>
+
+      <app-header-layout id="contentArea">
+        <app-header>
+          <app-toolbar>
+            <paper-icon-button icon="menu" drawer-toggle></paper-icon-button>            
+            <span title class="title">[[selectedMenu.pageName]]</span>
+            <button id="fullscreen-btn" on-tap="_fullScreenTap"></button>
+            <paper-tooltip for="fullscreen-btn" offset="0">
+              <things-i18n-msg msgid="button.fullscreen" auto>Full Screen</things-i18n-msg>
+            </paper-tooltip>
+            <paper-icon-button id="infoBtn" icon="icons:error-outline" on-tap="_hideInfoContent"></paper-icon-button>
+          </app-toolbar>
+
+          <iron-collapse id="searchToolbar" opened>
+            <paper-toolbar>
+              <form is="iron-form" id="header-form" method="post" action="/form/handler">
+                <things-i18n-msg msgid="label.date" msg="{{labelDate}}" auto hidden>Date</things-i18n-msg>
+                <things-date-picker
+                  id="date-picker"
+                  label="[[labelDate]]"
+                  value="{{globals.date}}">
+                </things-date-picker>
+
+                <iron-localstorage name="OI.date" value="{{globals.date}}">
+                </iron-localstorage>
+                <things-i18n-msg msgid="label.line" msg="{{labelLine}}" auto hidden>Line</things-i18n-msg>
+                <things-code-combo
+                  id="line-selector" 
+                  label="[[labelLine]]" 
+                  code-name="LINE"
+                  value="{{globals.line}}"
+                  label-path="description" 
+                  value-path="name">
+                </things-code-combo>
+                
+                <iron-localstorage name="OI.line" value="{{globals.line}}">
+                </iron-localstorage>
+                <things-i18n-msg msgid="label.operation" msg="{{labelOperation}}" auto hidden>Operation</things-i18n-msg>
+                <things-resource-selector 
+                  id="resource-selector" 
+                  label="[[labelOperation]]" 
+                  name="operation"
+                  obj-value="{{globals.operation}}"
+                  resource-type="Entity"
+                  resource-name="Operation"
+                  resource-title-field="name">
+                </things-resource-selector>
+                
+                <iron-localstorage name="OI.operation" value="{{globals.operation}}">
+                </iron-localstorage>
+                <things-i18n-msg msgid="label.work_order" msg="{{labelOrder}}" auto hidden>Order</things-i18n-msg>
+                <things-resource-selector 
+                  id="resource-selector" 
+                  label="[[labelOrder]]" 
+                  name="order"
+                  obj-value="{{globals.order}}"
+                  resource-type="Menu"
+                  resource-name="WorkOrder"
+                  resource-title-field="name">
+                </things-resource-selector>
+                
+                <iron-localstorage name="OI.order" value="{{globals.order}}">
+                </iron-localstorage>
+              </form>
+            </paper-toolbar>
+          </iron-collapse>
+        </app-header>
+
+        <div id="scrollingRegion">
+          <iron-collapse id ="informationContainer" opened class="layout horizontal">
+            <div class="orderinfo">
+              <span class="subtitle"><things-i18n-msg msgid="title.OrderStatus" auto>Order Status</things-i18n-msg></span>
+              <things-wip-order-info id="order-actual" order="[[globals.order]]"></things-wip-order-info>
+            </div>
+
+            <div class="routinginfo">
+              <span class="subtitle"><things-i18n-msg msgid="title.WIP" auto>Work In Process</things-i18n-msg></span>
+              <things-wip-routing-detail
+                id="wip"
+                search-url ="work_orders/:id/wip"
+                resource-id ="{{globals.order.id}}"
+                class="layout vertical flex"
+                show-info="true">
+              </things-wip-routing-detail>
+            </div>
+          </iron-collapse>
+
+          <iron-pages attr-for-selected="data-route" selected="{{route}}" id="_content_">
+            <div class ="layout flex"></div>
+          </iron-pages>
+        </div>   
+      </app-header-layout>
+
+      <!-- form validators -->
+      <things-validators id="validators"></things-validators>
+      <!-- date picker dialog -->
+      <things-date-picker-dialog id="date-picker-dialog"></things-date-picker-dialog>
+      <!-- things event mananger -->
+      <things-event-manager 
+        events = '[{"name": "success","function":"showToastInfo"},
+                  {"name": "failure","function" : "showToastConfim"},
+                  {"name": "refresh-wip","function":"refreshWip"}]'>
+      </things-event-manager>
+      <!-- full dialog -->
+      <things-full-dialog id='common-full-dialog'></things-full-dialog>
+      <!-- resource dialog -->
+      <things-resource-dialog id='resource-dialog'></things-resource-dialog>
+      <!-- confirm toast -->
+      <paper-toast id="confirmToast" class="Toast" duration="8000">
+        <span class="Toast-button" role="button" tabindex="0" on-tap="onConfirmToastTap">OK</span>
+      </paper-toast>
+      <!-- info toast -->
+      <paper-toast id="infoToast" class="Toast" duration="1000"></paper-toast>   
+    </app-drawer-layout>
+  </template>
+    
+  <script src="things-oi-app.js"></script>
+</dom-module>

@@ -1,0 +1,313 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../../bower_components/iron-icon/iron-icon.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../../bower_components/things-resource-selector/things-resource-selector-behavior.html">
+<link rel="import" href="../../../bower_components/things-view-open-behavior/things-view-open-behavior.html">
+<link rel="import" href="../../../bower_components/things-grid/things-resource-grid.html">
+
+<dom-module id="things-base-menu-setup-search">
+  <template>
+    <style>
+      :host {
+        display:block;
+        @apply(--layout-vertical);
+      }
+      things-resource-grid {
+        @apply(--layout-flex);
+      }
+    </style>
+
+    <things-ajax 
+      id="column-ajax"
+      method="GET"
+      resource-url="menus/:id/menu_meta?no_trans_term=true"
+      resource-id="[[resourceId]]"
+      last-response="{{menuMeta}}">
+    </things-ajax>
+
+    <things-resource-grid 
+      id="grid"
+      config="[[gridConfig]]"
+      model="[[gridModel]]" 
+      columns="[[gridColumns]]"
+      data="[[items]]"
+      grid-save-action="[[gridSaveUrl]]"
+      buttons="[[buttons]]">
+    </things-resource-grid>
+  </template>
+
+  <script>
+    Polymer({
+      is: 'things-base-menu-setup-search',
+      properties: {
+        /**
+         * Menu Id
+         */
+        resourceId: {
+          type: String
+        },
+        /**
+         * Menu Data
+         */
+        resource: {
+          type: Object
+        },
+        /**
+         * Menu Meta Data
+         * 데이터 형식 : { menu : Object, buttons: Array, columns: Array }
+         */
+        menuMeta: {
+          type: Object,
+          notify: true,
+          observer: '_onMenuMetaChanged'
+        },
+        /**
+         * Menu columns 조회 정보 
+         */
+        items: {
+          type: Array
+        },        
+        /**
+         * Grid Model
+         */
+        gridModel: {
+          type: Array,
+          value: [ { 
+            fieldName: 'id'
+          }, { 
+            fieldName: 'menu_id'
+          }, { 
+            fieldName: 'search_rank'
+          }, { 
+            fieldName: 'name'
+          }, { 
+            fieldName: 'term'
+          }, { 
+            fieldName: 'col_type'
+          }, { 
+            fieldName: 'sort_rank'
+          }, { 
+            fieldName: 'reverse_sort'
+          }, {
+            fieldName: 'search_editor'
+          }, {
+            fieldName: 'search_oper'
+          } ]
+        },
+        
+        /**
+         * Grid Columns
+         */
+        gridColumns: {
+          type: Array,
+          value: function() {
+            var validators = document.querySelector('#validators').allValidators();
+            var colTypes = [
+              '', 'binary', 'boolean', 'date', 'datetime','decimal','double', 
+              'float', 'integer', 'long', 'string', 'text', 'time', 'timestamp'
+            ];
+            var editors = [
+              '', 'hidden', 'readonly', 'checkbox', 'text', 'code-combo', 'number',
+              'textarea', 'resource-field', 'resource-selector', 'date-picker', 
+              'time-picker', 'datetime-picker', 'date-from-to-picker', 'tristate-radio'
+            ];
+            var opers = [
+              '', 'contains', 'dnew', 'dnsw', 'eq', 'ew', 'gt', 'gte', 'between', 'in', 
+              'is_blank', 'is_false', 'is_not_false', 'is_not_null', 'is_not_true', 'is_null', 
+              'is_present', 'is_true', 'like', 'lt', 'lte', 'nlike', 'noteq', 'notin', 'sw' ];
+              
+            return [ { 
+              fieldName: 'id', name: 'id', width: 0 
+            }, { 
+              fieldName: 'menu_id', name: 'menu_id', width: 0 
+            }, { 
+              fieldName: 'search_rank', name: 'search_rank', width: 60, type: 'number',
+              header: { 
+                text: Things.DataGlobal.t('label.rank')
+              },
+              styles: { 
+                textAlignment: 'far' 
+              }
+            }, { 
+              fieldName: 'name', name: 'name', width: 135,
+              header: { 
+                text: Things.DataGlobal.t('label.name')
+              }
+            }, { 
+              fieldName: 'term', name: 'term', width: 135,
+              header: { 
+                text: Things.DataGlobal.t('label.term')
+              },
+              valueType: 'text', type: 'calced',
+              valueCallback: function(column, row) {
+                var term = row.getValue('term');
+                return term ? Things.DataGlobal.t(term) : '';
+              }
+            }, { 
+              name: 'col_type', 
+              fieldName: 'col_type', 
+              width: 100,
+              lookupDisplay: true,
+              header: { 
+                text: Things.DataGlobal.t('label.col_type') 
+              },
+              editor: { 
+                type: 'list', 
+                domainOnly: true 
+              },
+              lookupValues: colTypes,
+              lookupLabels: colTypes
+            }, { 
+              fieldName: 'sort_rank', name: 'sort_rank', width: 80, type: 'number',
+              header: { 
+                text: Things.DataGlobal.t('label.sort_rank')
+              },
+              styles: { 
+                textAlignment: 'far' 
+              }
+            }, { 
+              fieldName: 'reverse_sort', name: 'reverse_sort', width: 100, editable: false,
+              header: { 
+                text: Things.DataGlobal.t('label.reverse_sort')
+              },
+              renderer: {
+                type:'check', 
+                editable: true, 
+                threeStates: false, 
+                trueValues: 'true', 
+                falseValues: 'false'
+              }
+            }, { 
+              name: 'search_editor', 
+              fieldName: 'search_editor', 
+              width: 120,
+              lookupDisplay: true,
+              header: { 
+                text: Things.DataGlobal.t('label.editor') 
+              },
+              editor: { 
+                type: 'list', 
+                domainOnly: true 
+              },
+              lookupValues: editors,
+              lookupLabels: editors
+            }, {
+              fieldName: 'search_oper', 
+              name: 'search_oper', 
+              width: 120,
+              lookupDisplay: true,
+              header: { 
+                text: Things.DataGlobal.t('label.search_oper') 
+              },
+              editor: { 
+                type: 'list', 
+                domainOnly: true 
+              },
+              lookupValues: opers,
+              lookupLabels: opers
+            } ];
+          }
+        },
+        /**
+         * Search Column Save URL
+         */
+        gridSaveUrl: {
+          type: String,
+          computed: '_computeColumnSaveUrl(resourceId)'
+        },
+        /**
+         * 버튼 정보 
+         */
+        buttons: {
+          type: Array,
+          value: [ {
+            id: 'save-btn',
+            text: 'save',
+            icon: 'icons:save'
+          },{
+            id : 'print-btn',
+            text : 'print',
+            icon: 'icons:print'
+          } ]
+        }
+      },
+      listeners: {
+        'things-detail-view-selected' : '_detailTabSelected',
+        'grid.things-grid-handle-save' : '_beforeSearchColumnSave',
+        'grid.things-grid-save-success' : '_reloadGrid',
+        'column-ajax.things-ajax-response': '_afterColumnsLoaded'
+      },
+      /**
+       * 상세 탭 선택시 ...
+       */
+      _detailTabSelected: function(e) {
+        this.$.grid.resizeGrid();
+      },
+      /**
+       * MenuMeta 변경시
+       *
+       * @param {Object} menuMeta
+       */
+      _onMenuMetaChanged: function(menuMeta) {
+        if(!menuMeta || !menuMeta.columns || menuMeta.columns.length == 0) {
+          this.items = [];
+        } else {
+          var items = menuMeta.columns.filter(function(column) {
+            return (column.search_rank && column.search_rank > 0) || (column.sort_rank && column.sort_rank > 0);
+          });
+          if(items && items.length > 0) this._sortColumns(items, 'search_rank')
+          this.items = items;
+        }
+      },
+      /**
+       * list sorting
+       */
+      _sortColumns: function(list, sortField) {
+        list.sort(function(a, b) {
+          return (a[sortField] > b[sortField]) ? 1 : ((b[sortField] > a[sortField]) ? -1 : 0);
+        });
+      },
+      /**
+       * Search Column Save URL
+       *
+       * @param {String} resourceId
+       * @return {String} Search Column Save URL
+       */
+      _computeColumnSaveUrl: function(resourceId) {
+        return 'menus/' + resourceId + '/menu_columns/update_multiple';
+      },      
+      /**
+       * Search Column 저장 전
+       *
+       * @param {Object} event menu-meta 저장 전 이벤트 
+       */
+      _beforeSearchColumnSave: function(event) {
+        var grid = event.target;
+        if(grid.writeData && grid.writeData.length > 0) {
+          var resourceId = this.resourceId;
+          grid.writeData.forEach(function(changedData) {
+            delete changedData['term'];
+            if(changedData.cud_flag_ == 'c') {
+              changedData.menu_id = resourceId;
+            }
+          });
+        }
+      },
+      /**
+       * Reload Grid Data
+       */
+      _reloadGrid: function(e) {
+        this.$['column-ajax'].generateRequest();
+      },
+      /**
+       * Menu Meta Data 조회 후 
+       *
+       * @param {Object} event 
+       */
+      _afterColumnsLoaded: function(event) {
+        this.menuMeta = event.detail;
+      },
+    });
+  </script>
+</dom-module>

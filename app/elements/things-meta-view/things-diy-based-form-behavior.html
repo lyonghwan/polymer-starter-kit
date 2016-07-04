@@ -1,0 +1,77 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../bower_components/things-global-behavior/things-global-behavior.html">
+<link rel="import" href="../../bower_components/things-msg-box-behavior/things-msg-box-behavior.html">
+
+<link rel="import" href="things-diy-based-form-meta-behavior.html">
+
+<script>
+
+window.Things = window.Things || {};
+
+/**
+ * 리소스 타입 DiyForm 기반 폼 화면 Behavior
+ *
+ * @polymerBehavior Things.DiyBasedFormBehavior
+ */
+Things.DiyBasedFormBehaviorImpl = {
+
+	properties: {
+		/**
+		 * 조회 결과 
+		 */
+		diyForm: {
+			type: Object,
+			observer: '_diyFormChanged'
+		},
+
+		/**
+		 * 폼 데이터 
+		 */
+		resource: {
+			type: Array
+		}
+	},
+
+	/**
+	 * Form을 리턴한다.
+	 */
+	getForm: function() {
+		return this.$.form;
+	},
+
+	/**
+	 * ID Field를 리턴한다.
+	 */
+	getIdField: function() {
+		return (this.diyForm && this.diyForm.id_field) ? this.diyForm.id_field : 'id';
+	},
+
+	/**
+	 * Title Field를 리턴한다.
+	 */
+	getTitleField: function() {
+		return (this.diyForm && this.diyForm.title_field) ? this.diyForm.title_field : 'name';
+	},
+
+	/**
+	 * 메뉴 메타데이터 변경시
+   *
+	 * @param {Object} diyForm
+	 */
+	_diyFormChanged: function(diyForm) {
+		if(diyForm) {
+			this.diyFormId = diyForm.id;
+		}
+	}
+
+};
+
+Things.DiyBasedFormBehavior = [
+	Things.DiyBasedFormBehaviorImpl,
+	Things.DiyBasedFormMetaBehavior,
+	Things.MsgBoxBehavior,
+	Things.GlobalBehavior
+];
+
+</script>

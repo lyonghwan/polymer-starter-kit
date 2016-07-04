@@ -1,0 +1,86 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../bower_components/things-meta/things-grid-meta-behavior.html">
+
+<script>
+
+window.Things = window.Things || {};
+
+/**
+ * 화면 구성을 위해 DiyGrid 기반 메타 데이터를 조회하여 모델 정보를 제공하는 Behavior
+ * 화면의 메타 데이터를 조회하는 URL 구성과 메타 데이터를 받은 후 그리드에 필요한 모델 정보를 제공한다.
+ *
+ * @polymerBehavior Things.DiyBasedGridMetaBehavior
+ */
+Things.DiyBasedGridMetaBehaviorImpl = {
+
+	properties: {
+		/**
+		 * DiyGrid ID
+		 */
+		diyGridId: {
+			type: String
+		},
+
+		/**
+		 * 화면 구성을 위해 필요한 메뉴 메타 데이터를 조회하기 위한 URL
+		 */
+		gridMetaUrl: {
+			type: String,
+			computed: '_computeGridMetaUrl(diyGridId)'
+		},
+
+		/**
+		 * Menu meta data - gridModel, gridColumns, buttons 등을 파싱한다. 
+		 */
+		metaData: {
+			type: Array,
+			observer: 'parseMetaData'
+		}
+	},
+
+	/**
+	 * diyGridId로 부터 Diy Grid의 메타 데이터 조회 URL을 생성
+	 *
+	 * @param {String} diyGridId
+	 * @return {String} Get DiyGrid Meta URL
+	 */
+	_computeGridMetaUrl: function(diyGridId) {
+		return 'view_columns/DiyGrid/' + diyGridId + '/meta';
+	},
+
+	/**
+	 * meta data를 파싱한다.
+	 *
+	 * @param {Array} metaData
+	 */
+	parseMetaData: function(metaData) {
+		if(!metaData) return;
+
+		// 1. 메타 데이터가 Object로 넘어올 경우
+		if(metaData.columns) {
+			// 1. Parse Grid Models
+			this.gridModel = this._parseGridModel(metaData.columns);
+			// 2. Parse Grid Columns
+			this.gridColumns = this._parseGridColumns(metaData.columns);
+
+		// 2. 메타 데이터가 Text로 넘어올 경우
+		} else {
+			var metaAll = JSONfn.parse(metaData.text);
+			this.gridModel = metaAll.model;
+			metaAll.columns.forEach(function(column) {
+				if(column.header && column.header.text) { column.header.text = Things.DataGlobal.t(column.header.text); }
+			});
+			this.gridColumns = metaAll.columns;
+			this.gridConfig = metaAll.config;
+		}
+	}	
+
+};
+
+Things.DiyBasedGridMetaBehavior = [
+	Things.DiyBasedGridMetaBehaviorImpl,
+	Things.GridMetaBehavior
+];
+
+</script>

@@ -1,0 +1,388 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+
+<link rel="import" href="../../things-layout-view/things-layout-athena.html">
+<link rel="import" href="../../things-meta-view/things-diy-based-grid.html">
+<link rel="import" href="../../things-meta-view/things-diy-based-form.html">
+
+<link rel="import" href="things-term-common-grid.html">
+<link rel="import" href="things-lot-based-transaction-behavior.html">
+
+<!--
+  OI - ASSEMBLE LOT 트랜잭션 
+-->
+
+<dom-module id="things-term-assemble-lot">
+  <template>
+    <style>
+      :host {
+        display: block;
+        @apply(--layout-vertical);
+        @apply(--layout-flex);
+      }
+      things-layout-athena {
+        @apply(--layout-flex);
+      }
+    </style>
+
+    <things-ajax
+      id="validate-lot"
+      resource-action="create"
+      resource-url="lot_trxs/VALIDATE/transaction"
+      last-response="{{lot}}">
+    </things-ajax>
+
+    <things-ajax
+      id="transaction"
+      resource-action="create"
+      resource-url="[[transactionUrl]]">
+    </things-ajax>
+
+    <!-- bom list search ajax -->
+    <things-ajax
+      id="bom-parts-search"
+      resource-action="index"
+      last-response="{{bomListResponse}}">
+    </things-ajax>
+
+    <things-layout-athena 
+      left-content-title="[[lotInfoTitle]]" 
+      right-top-content-title="[[inputTitle]]" 
+      right-bottom-content-title="[[lotListTitle]]">
+      
+      <things-diy-based-form
+        left
+      	on-keypress="handleKeyPress"
+        id="lot-info-form"
+        class="flex"
+        diy-form-name="OI-LotInfo"
+        buttons="[[lotSearchButton]]">
+      </things-diy-based-form>
+      
+      <things-diy-based-form 
+        right-top
+      	on-keypress="insertMaterialPress"
+        id="input-form"
+        class="flex"
+        buttons="[[assyInsertButton]]"
+        diy-form-name="OI-Assy">
+      </things-diy-based-form>
+
+      <!-- bom list grid -->
+      <things-diy-based-grid
+        right-bottom
+        id="bom-list-grid"
+        class="flex"
+        fixed-column-count="0"
+        buttons="[[processButton]]"
+        diy-grid-name="OI-AssyList"
+        items="{{bomListData}}">
+      </things-diy-based-grid>
+    </things-layout-athena>
+  </template>
+
+  <script>
+    Polymer({
+      is: 'things-term-assemble-lot',
+      
+      behaviors: [
+        Things.LotBasedTransactionBehavior
+      ],
+
+      properties: {
+
+        /**
+         * Title Of Lot Information
+         */
+        lotInfoTitle: {
+          type: String,
+          value: function() {
+            return Things.DataGlobal.t('title.LotInformation')
+          }
+        },
+
+        /**
+         * Title Of Input
+         */
+        inputTitle: {
+          type: String,
+          value: function() {
+            return Things.DataGlobal.t('title.Input')
+          }
+        },
+
+        /**
+         * Title Of Lot List
+         */
+        lotListTitle: {
+          type: String,
+          value: function() {
+            return Things.DataGlobal.t('menu.BomPart')
+          }
+        },
+
+        /**
+         * lot id에 따른 bom part list
+         */
+        bomListResponse: {
+        	type: Object,
+        	observer: '_bomListChanged'
+        },
+
+        /**
+        * lot search button setting
+        */
+        lotSearchButton: {
+          type: String,
+            value: function() {
+            return [{
+              id: 'search-btn',
+              text: 'search'
+            }, {
+              id: 'reset-btn',
+              text: 'reset'
+            }]
+          }
+        },
+
+        /**
+         * material input buttons setting
+         */
+        assyInsertButton: {
+        	type: Array,
+        	value: function() {
+        		return [{
+        			id: 'insert-btn',
+        			text: 'insert'
+        		}]
+        	}
+        },
+
+        /**
+         * lot transaction process button setting
+         */
+        processButton: {
+        	type: Array,
+        	value: function() {
+        		return [{
+        			id: 'process-btn',
+        			text: 'process'
+        		}]
+        	}
+        }
+      },
+
+      observers: [
+        'lotListConditionsChanged(orderId,operationId)'
+      ],
+
+      listeners: {
+      	'insert-btn-tap' : 'insertMaterial',
+        'process-btn-tap' : 'lotTransaction',
+        'transaction.things-ajax-response' : 'transactionResponsed'
+      },
+
+      /**
+       * Life Cycle - Ready
+       */
+      ready: function() {
+        this.transaction = 'ASSEMBLE';
+      },
+
+      /**
+       * Latest Lot List 검색 조건 변경시 
+       *
+       * @param {String} orderId
+       * @param {String} operationId
+       */
+      lotListConditionsChanged: function(orderId, operationId) {
+        this.latestLotQueryFields = [ {
+          name: 'work_order_id',
+          value: orderId
+        }, {
+          name: 'operation_id',
+          value: operationId
+        } ];
+      },
+
+      /**
+       * Form List를 리턴 
+       */
+      getForms: function() {
+        return [this.getLotInfoForm(), this.getInputForm()];
+      },
+
+      /**
+       * Lot Information Form
+       */
+      getLotInfoForm: function() {
+        return this.$['lot-info-form'];
+      },
+
+      /**
+       * Input Form
+       */
+      getInputForm: function() {
+        return this.$['input-form'];
+      },
+
+      /**
+       * Validation Lot Service
+       */
+      getValidateLotService: function() {
+        return this.$['validate-lot'];
+      },
+
+      /**
+       * Transaction Lot Service
+       */
+      getTransactionLotService: function() {
+        return this.$['transaction'];
+      },
+
+      /**
+       * Get Lot No.
+       */
+      getLotNo: function() {
+        var inputData = this.getLotInfoForm().getForm().serializeMyForm();
+        return inputData.name;
+      },
+
+      /**
+       * Lot Transaction
+       */
+      lotTransaction: function() {
+        var lotData = this.getLotInfoForm().getForm().serializeMyForm();
+        var tranAjax = this.getTransactionLotService();
+        var bomListData = [];
+
+        // 서버로 넘길 데이터를 추출
+        for(var i = 0; i < this.bomListData.length; i++) {
+          var bomData = this.bomListData[i];
+
+          if(bomData.consume_qty && bomData.consume_qty > 0) {
+            bomListData.push({
+              id : bomData.id,
+              rank : bomData.rank,
+              material_id : bomData.material_id,
+              std_qty : bomData.std_qty,
+              assy_mode : bomData.assy_mode,
+              alt_group : bomData.alt_group,
+              consume_qty : bomData.consume_qty,
+              operation_id : bomData.operation_id
+            });
+          }
+        };
+
+        tranAjax.body = {
+          lot_id : lotData.id,
+          work_order_id : this.orderId,
+          current_operation_id : this.operationId,
+          bom_list_data: JSON.stringify(bomListData)
+        };
+
+        tranAjax.generateRequest();
+      },
+
+      /**
+       * 트랜잭션 성공시 
+       *
+       * @param {Object} event
+       */
+      transactionResponsed: function(event) {
+        if(!this.checkTransactionResponse(event)) {
+          return;
+        }
+        
+        this.resetForm();
+        this.fire('iron-signal', {name : 'refresh-wip'});
+      },
+
+      /**
+       * Reset Form 
+       *
+       * @param {Object} event
+       */
+      resetForm: function(event) {
+        this.bomListData = [];
+        var forms = this.getForms();
+        forms.forEach(function(form) { form.getForm().resetMyForm(); }); 
+      },
+
+      /**
+       * bomListResponse 변화시 호출
+       * response를 bomListData에 초기화 합니다.
+       */
+      _bomListChanged: function(response) {
+      	this.bomListData = response.items;
+      },
+
+      /**
+       * material_id 입력후 input-form의 enter event listener
+       */
+      insertMaterialPress: function(event) {
+				var code = event.keyCode;
+        if(code == 13) {
+          this.insertMaterial();
+        }	
+      },
+
+      /**
+       * things-lot-based-transaction-behavior override
+       * lot의 변화를 감지하여 bom-parts-search ajax를 호출 합니다.
+       */
+      lotChanged: function(lot) {
+      	this.getLotInfoForm().getForm().setFormData(lot);
+	      var bomPartAjax = this.$['bom-parts-search'];
+
+				bomPartAjax.resourceUrl = 'bom_parts';
+				bomPartAjax.queryFields = [{
+          name: 'operation_id', value: this.operationId
+        }, { 
+          name: 'bom_id', value: this.order.bom.id 
+        }, {
+          name: 'collectable', operator: 'is_true' 
+        }];
+
+				bomPartAjax.generateRequest();
+      },
+
+      /**
+       * input-form에서 입력 받은 데이터를 기반으로
+       * grid의 데이터를 변경 합니다.
+       */
+      insertMaterial: function() {
+        var inputForm = this.getInputForm().getForm();
+      	var inputData = inputForm.serializeMyForm();
+      	var bomListData = this.bomListResponse.items;
+
+      	var newMaterial = inputData.material_name;
+      	var consumeQty = parseInt(inputData.consume_qty);
+
+        // 입력 받은 material_name과 bomListData의 material name을 비교하여 같은 material의 수량을 계산합니다.
+      	for (var i = 0; i < bomListData.length; i++) {
+      		if(newMaterial == bomListData[i].material.name) {
+
+            if(bomListData[i].consume_qty && bomListData[i].consume_qty > 0) {
+              //TODO consume_qty가 이미 입력 되었다면 (조립이 이미 완료된 material이라면) error 발생
+              return;
+            }
+
+            if(consumeQty == bomListData[i].std_qty) {
+              bomListData[i].consume_qty = consumeQty;
+            } else {
+              // TODO: std_qty와 다른 consumeQty가 입력 될 시 error 발생
+              return;
+            }
+      		}
+      	}
+
+        this.bomListData = [];
+        this.bomListData = bomListData;
+        inputForm.resetMyForm();
+      }
+
+    });
+  </script>
+</dom-module>

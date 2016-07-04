@@ -1,0 +1,156 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../bower_components/paper-card/paper-card.html">
+
+<link rel="import" href="./things-layout-behavior.html">
+
+<!--
+	상하 1:1 분할 상단 3분할 레이아웃
+-->
+
+<dom-module id="things-layout-artemis">
+	<template>
+		<style>
+			:host {
+				display: inline-block;
+				@apply(--layout-vertical);
+			}
+			paper-card {
+			    background-color:transparent;
+			}
+			#top {
+				@apply(--layout-flex);
+				@apply(--layout-horizontal);
+				padding:15px 0;
+			}
+
+			#topLeft {
+				@apply(--layout-vertical);
+				@apply(--layout-flex);
+			}
+
+			#topCenter {
+				@apply(--layout-vertical);
+				@apply(--layout-flex);
+				margin:0 15px;
+			}
+
+			#topRight {
+				@apply(--layout-vertical);
+				@apply(--layout-flex);
+			}
+
+			.layout-content {
+				@apply(--layout-vertical);
+				@apply(--layout-flex);
+				overflow: auto;
+			}
+
+			#bottom {
+				@apply(--layout-flex);
+				@apply(--layout-vertical);
+			}
+
+			#bottomContent {
+				@apply(--layout-flex);
+			}
+
+			.subtitle:before {
+				content: '';
+				@apply(--things-subtitle-icon);
+			}
+
+			.subtitle {
+				@apply(--things-default-padding);
+				@apply(--things-subtitle);
+			}
+		</style>
+
+    <!-- top -->
+  	<div id="top">
+  		<!-- top left -->
+  		<paper-card id="topLeft" elevation="0">
+  			<span class="subtitle">[[topLeftContentTitle]]</span>
+  			<div id="topLeftContent" class="layout-content">
+  				<content select="[top-left]"></content>
+  			</div>
+  		</paper-card>
+
+  		<!-- top center -->
+  		<paper-card id="topCenter" elevation="0">
+  			<span class="subtitle">[[topCenterContentTitle]]</span>
+  			<div id="topCenterContent" class="layout-content">
+  				<content select="[top-center]"></content>
+  			</div>
+  		</paper-card>
+
+  		<!-- top right -->
+  		<paper-card id="topRight" elevation="0">
+  			<span class="subtitle">[[topRightContentTitle]]</span>
+  			<div id="topRightContent" class="layout-content">
+  				<content select="[top-right]"></content>
+  			</div>
+  		</paper-card>
+	</div>
+
+	<!-- bottom -->
+	<div id="bottom">
+		<span class="subtitle">[[bottomContentTitle]]</span>
+		<div id="bottomContent" class="layout-content">
+			<content select="[bottom]"></content>
+		</div>
+	</div>
+	</template>
+
+	<script>
+		Polymer({
+			is: 'things-layout-artemis',
+
+			properties: {
+				
+				topLeftContentTitle: {
+					type: String,
+					value: 'topLeftContent'
+				},
+
+				topCenterContentTitle: {
+					type: String,
+					value: 'topCenterContent'
+				},
+
+				topRightContentTitle: {
+					type: String,
+					value: 'topRightContent'
+				},
+
+				bottomContentTitle: {
+					type: String,
+					value: 'bottomContent'
+				}
+			},
+
+			behaviors: [
+				Things.LayoutBehavior
+			],
+
+			listeners: {
+				'sections-configured' : 'setupLayoutClass'
+			},
+
+			/**
+			* Section이 모두 추가된 후 Layout Class를 설정한다.
+			*
+			* @param {Object} e sections-configured
+			*/
+			setupLayoutClass: function(e) {
+				// TODO
+				// if(!this.sections || this.sections.length == 0) return;
+
+				// if(this.sections['topContent'])
+				// 	this.sections['topContent'].setAttribute('class', 'flex');
+
+				// if(this.sections['bottomContent'])
+				// 	this.sections['bottomContent'].setAttribute('class', 'flex');
+			}
+		});
+	</script>
+</dom-module>

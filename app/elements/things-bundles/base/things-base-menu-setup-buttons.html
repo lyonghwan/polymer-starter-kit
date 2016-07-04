@@ -1,0 +1,238 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../../bower_components/iron-icon/iron-icon.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../../bower_components/things-resource-selector/things-resource-selector-behavior.html">
+<link rel="import" href="../../../bower_components/things-view-open-behavior/things-view-open-behavior.html">
+<link rel="import" href="../../../bower_components/things-grid/things-resource-grid.html">
+
+<dom-module id="things-base-menu-setup-buttons">
+  <template>
+    <style>
+      :host {
+        display:block;
+        @apply(--layout-vertical);
+      }
+      things-resource-grid {
+        @apply(--layout-flex);
+      }
+    </style>
+
+    <things-ajax 
+      id="button-ajax"
+      method="GET"
+      resource-url="menus/:id/menu_meta?no_trans_term=true"
+      resource-id="[[resourceId]]"
+      last-response="{{menuMeta}}">
+    </things-ajax>
+
+    <things-resource-grid 
+      id="grid"
+      config="[[gridConfig]]"
+      model="[[gridModel]]" 
+      columns="[[gridColumns]]"
+      data="[[items]]"
+      grid-save-action="[[gridSaveUrl]]"
+      buttons="[[buttons]]">
+    </things-resource-grid>
+  </template>
+
+  <script>
+    Polymer({
+
+      is: 'things-base-menu-setup-buttons',
+
+      properties: {
+
+        /**
+         * Menu ID
+         */
+        resourceId: {
+          type: String
+        },
+
+        /**
+         * Menu
+         */
+        resource: {
+          type: Object
+        },
+
+        /**
+         * Menu Meta Data
+         * 데이터 형식 : { menu : Object, buttons: Array, columns: Array }
+         */
+        menuMeta: {
+          type: Object,
+          observer: '_onMenuMetaChanged'
+        },        
+
+        /**
+         * menu columns 조회 정보 
+         */
+        items: {
+          type: Array
+        },        
+
+        /**
+         * grid model
+         */
+        gridModel: {
+          type: Array,
+          value: [ { 
+            fieldName: 'id' 
+          }, { 
+            fieldName: 'menu_id' 
+          }, { 
+            fieldName: 'text' 
+          }, { 
+            fieldName: 'term' 
+          }, { 
+            fieldName: 'icon' 
+          }, { 
+            fieldName: 'style' 
+          }, { 
+            fieldName: 'logic'
+          } ]
+        },
+        
+        /**
+         * grid columns
+         */
+        gridColumns: {
+          type: Array,
+          value: []
+        },
+
+        /**
+         * Menu Buttons Save URL
+         */
+        gridSaveUrl: {
+          type: String,
+          computed: '_computeButtonSaveUrl(resourceId)'
+        },
+
+        /**
+         * 버튼 정보 
+         */
+        buttons: {
+          type: Array,
+          value: [ {
+            id: 'add-btn',
+            text: 'add',
+            icon: 'icons:add'
+          }, {
+            id: 'save-btn',
+            text: 'save',
+            icon: 'icons:save'
+          }, {
+            id: 'delete-btn',
+            text: 'delete',
+            icon: 'icons:delete'
+          } ]
+        }
+      },
+
+      listeners: {
+        'things-detail-view-selected' : '_detailTabSelected',
+        'grid.things-grid-handle-save' : '_beforeButtonSave',
+        'grid.things-grid-save-success' : '_reloadGrid',
+        'button-ajax.things-ajax-response': '_afterButtonsLoaded'
+      },
+
+      attached : function(){
+        this.gridColumns = [{ 
+            fieldName: 'id', name: 'id', width: 0 
+          }, { 
+            fieldName: 'menu_id', name: 'menu_id', width: 0 
+          }, { 
+            fieldName: 'text', name: 'text', width: 200,
+            header: { 
+              text: Things.DataGlobal.t('label.name')
+            },
+          }, { 
+            fieldName: 'term', name: 'term', width: 135,
+            header: { 
+              text: Things.DataGlobal.t('label.term')
+            },
+            valueType: 'text', type: 'calced',
+            valueCallback: function(column, row) {
+              var text = row.getValue('text');
+              return text ? Things.DataGlobal.t('button.' + text) : '';
+            }
+          }, { 
+            fieldName: 'icon', name: 'icon', width: 150,
+            header: { 
+              text: Things.DataGlobal.t('label.icon')
+            }
+          }, { 
+            fieldName: 'style', name: 'style', width: 150,
+            header: { 
+              text: Things.DataGlobal.t('label.style')
+            }
+          }/*, { 
+            fieldName: 'logic', name: 'logic', width: 350,
+            header: {
+              text: Things.DataGlobal.t('label.logic')
+           }
+          }*/ ]
+      },
+      /**
+       * 상세 탭 선택시 ...
+       */
+      _detailTabSelected: function(e) {
+        this.$.grid.resizeGrid();
+      },      
+
+      /**
+       * MenuMeta 변경시
+       *
+       * @param {Object} menuMeta
+       */
+      _onMenuMetaChanged: function(menuMeta) {
+        this.items = menuMeta.buttons;
+      },
+
+      /**
+       * Button Search URL 데이터로 Button Save URL 생성
+       *
+       * @param {String} resourceId
+       * @return {String} Button Search URL
+       */
+      _computeButtonSaveUrl: function(resourceId) {
+        return 'menus/' + resourceId + '/menu_buttons/update_multiple';
+      },
+
+      /**
+       * Button Grid 저장 후 
+       */
+      _afterButtonsLoaded: function(event) {
+        this.menuMeta = event.detail;
+      },
+
+      /**
+       * Button Grid 저장 전 
+       */
+      _beforeButtonSave: function(event) {
+        var grid = event.target;
+        if(grid.writeData && grid.writeData.length > 0) {
+          var resourceId = this.resourceId;
+          grid.writeData.forEach(function(changedData) {
+            delete changedData['term'];
+            if(changedData.cud_flag_ == 'c') {
+              changedData.menu_id = resourceId;
+            }
+          });
+        }
+      },
+
+      /**
+       * Reload Grid Data
+       */
+      _reloadGrid: function(e) {
+        this.$['button-ajax'].generateRequest();
+      }
+
+    });
+  </script>
+</dom-module>

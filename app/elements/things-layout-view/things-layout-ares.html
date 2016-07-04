@@ -1,0 +1,131 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../bower_components/paper-card/paper-card.html">
+
+<link rel="import" href="./things-layout-behavior.html">
+
+<!--
+	상하 1:1분할 상단 좌우 분할 레이아웃
+-->
+
+<dom-module id="things-layout-ares">
+	<template>
+		<style>
+			:host {
+				display: inline-block;
+				@apply(--layout-vertical);
+			}
+			paper-card {
+			    background-color:transparent;
+			}
+			#top {
+				@apply(--layout-flex);
+				@apply(--layout-horizontal);
+			}
+
+			#topLeft {
+				@apply(--layout-flex);
+				@apply(--layout-vertical);
+			}
+
+			#topRight {
+				@apply(--layout-flex);
+				@apply(--layout-vertical);
+			}
+
+			#bottom {
+				@apply(--layout-flex);
+				@apply(--layout-vertical);
+			}
+
+			.layout-content {
+				@apply(--layout-vertical);
+				@apply(--layout-flex);
+				overflow: auto;
+			}
+
+			.subtitle:before {
+				content: '';
+				@apply(--things-subtitle-icon);
+			}
+
+			.subtitle {
+				@apply(--things-default-padding);
+				@apply(--things-subtitle);
+			}
+		</style>
+
+		<!-- top -->
+  	<div id="top">
+	    <!-- top-left-->
+  		<paper-card id="topLeft" elevation="1">
+		    <span class="subtitle">[[topLeftContentTitle]]</span>
+	    	<div id="topLeftContent" class="layout-content">
+	    		<content select="[top-left]"></content>
+	    	</div>
+	    </paper-card>
+
+	    <!-- top-right-->
+	    <paper-card id="topRight" elevation="1">
+		    <span class="subtitle">[[topRightContentTitle]]</span>
+		    <div id="topRightContent" class="layout-content">
+		    	<content select="[top-right]"></content>
+		    </div>
+	    </paper-card>
+    </div>
+
+    <!-- bottom -->
+    <div id="bottom">
+			<span class="subtitle">[[bottomContentTitle]]</span>
+			<div id="bottomContent" class="layout-content">
+				<content select="[bottom]"></content>
+			</div>
+		</div>
+	</template>
+
+	<script>
+		Polymer({
+			is: 'things-layout-ares',
+
+			properties: {
+				topLeftContentTitle: {
+					type: String,
+					value: 'topLeftContent'
+				},
+
+				topRightContentTitle: {
+					type: String,
+					value: 'topRightContent'
+				},
+
+				bottomContentTitle: {
+					type: String,
+					value: 'bottomContent'
+				}
+			},
+
+			behaviors: [
+				Things.LayoutBehavior
+			],
+
+			listeners: {
+				'sections-configured' : 'setupLayoutClass'
+			},
+
+			/**
+			* Section이 모두 추가된 후 Layout Class를 설정한다.
+			*
+			* @param {Object} e sections-configured
+			*/
+			setupLayoutClass: function(e) {
+				// TODO
+				// if(!this.sections || this.sections.length == 0) return;
+
+				// if(this.sections['topContent'])
+				// 	this.sections['topContent'].setAttribute('class', 'flex');
+
+				// if(this.sections['bottomContent'])
+				// 	this.sections['bottomContent'].setAttribute('class', 'flex');
+			}
+		});
+	</script>
+</dom-module>

@@ -1,0 +1,94 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../bower_components/things-ws/things-ws.html">
+
+<dom-module id="things-print-agent">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+    </style>
+
+    <things-ws id="websocket" url="ws://192.168.35.72:9010/print/label"></things-ws>
+
+    <things-ajax id="history"
+                 resource-url="label_histories"
+                 method="POST"
+                 content-type="application/json"
+                 body="{{request}}">
+    </things-ajax>
+  </template>
+
+  <script src="../../bower_components/things-zpl/things-zpl.js"></script>
+
+  <script>
+    Polymer({
+      is: 'things-print-agent',
+
+      properties: {
+        agentUrl: {
+          notify: true
+        },
+
+        message: {
+          type: String,
+          observer: 'onMessageChanged'
+        },
+
+        label: {
+          type: Object
+        },
+
+        convertData: {
+          type: Object
+        }
+      },
+
+      ready: function() {
+      },
+
+      attached: function() {
+        this.$.websocket.fire('open')
+      },
+
+      detached: function() {
+        this.$.websocket.fire('close')
+      },
+
+      onMessageChanged: function(data) {
+        this.makeHistory();
+        this.$.websocket.fire('send', data)
+      },
+
+      makeHistory: function() {
+        this.request = this.label;
+        this.$.history.generateRequest();
+      },
+
+      printLabel: function() {
+        // 1. Component 추출 
+        var model = JSON.parse(this.label.model);
+        var variables = this.convertData;
+
+        // 2. convertData --> variables 데이터 변환 
+        if(model.components) {
+          model.components.forEach(function(component) {
+            var value = variables[component.text];
+            if(value) {
+              component.text = value;
+            }
+          });
+        }
+
+        // 3. Component --> command로 추출 
+        var command = zpl.revert(model.components);
+        this.message = {
+          'print_name' : 'BIXOLON_SLP_DX420',
+          'command' : command
+        }
+      }
+    });
+  </script>
+</dom-module>

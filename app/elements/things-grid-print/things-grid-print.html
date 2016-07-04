@@ -1,0 +1,385 @@
+<link rel="import" href="things-grid-previewer.html">
+<dom-module is="things-grid-print">
+    <template>
+        <div id="container" style="width: 900px; height: 300px"></div>
+        <div id="reportLoader"></div>
+        <paper-button raised on-tap="showGrid">showGrid</paper-button>
+        <paper-button raised on-tap="print">Print</paper-button>
+        <paper-button raised on-tap="preview">preview</paper-button>
+    </template>
+    <script>
+    Polymer({
+        is: 'things-grid-print',
+
+        properties: {
+            dsMain: {
+                type: Object
+            },
+
+            grdMain: {
+                type: Object
+            },
+
+            report: {
+                type: Object,
+                value: function() {
+                    return this.reportConfig();
+                }
+            },
+            //
+            reportData: {
+                type: Array,
+                value: []
+            },
+
+            printOptions: {
+                type: Object,
+                value: function() {
+                    var options = {
+                        //하드 코딩하여 previewer 찾아 줌
+                        previewUrl:'previewer.html',
+                        htmlDpi : 96,//number,
+                        imageLoadTime : 1000,
+                        paperHeight : '297mm',
+                        paperWidth  : '210mm',
+                        paperMarginBottom : '15mm',
+                        paperMarginTop :'15mm',
+                        paperMarginLeft :'12mm',
+                        paperMarginRight : '12mm',
+                        //PORTRAIT    "portrait"  가로 출력.
+                        //LANDSCAPE "landscape" 세로 출력.
+                        paperOrientation : 'PORTRAIT', 
+                        previewHeight : 1000, 
+                        previewWidth : 1000,
+                        previewTitle : 'Print Previewer'
+                    };
+                    return options;
+                }
+            }
+        },
+
+
+        reportConfig: function() {
+            var reportConfig = {
+                reportHeader: {
+                    items: [{
+                        text: "Order List",
+                        styles: {
+                            paddingTop: 10,
+                            paddingBottom: 20,
+                            fontName: "Arial",
+                            fontSize: 30,
+                            fontUnderline: true
+                        }
+                    }]
+                },
+
+                reportFooter: {
+                    items: [{
+                        type: "list",
+                        right: 0,
+                        items: [{
+                            styles: {
+                                padding: 6,
+                                fontSize: 16,
+                                fontBold: true,
+                                numberFormat: "#,##0"
+                            },
+                            header: {
+                                text: "for Test",
+                                styles: {
+                                    fontSize: 14
+                                }
+                            }
+                        }],
+                        styles: {
+                            background: "#100088ff",
+                            borderTop: "#aaa",
+                            borderBottom: "#aaa",
+                            marginTop: 10
+                        }
+                    }]
+                },
+                pageHeader: {
+                    styles: {
+                        margin: 4,
+                        background: "#f8f8f8"
+                    },
+                    items: [{
+                        left: 0,
+                        text: 'Hatiolab.',
+                        styles: {
+                            fontBold: true,
+                            fontItalic: true
+                        }
+                    }]
+                },
+                pageFooter: {
+                    styles: {
+                        margin: 4,
+                        background: "#f8f8f8"
+                    },
+                    items: [{
+                        type: "hbox",
+                        right: 0,
+                        items: [{
+                            data: '$report.pageno'
+                        }, {
+                            text: '/'
+                        }, {
+                            data: '$report.pages'
+                        }]
+                    }]
+                },
+                grid: {
+                    display: {
+                        fitStyle: 'even'
+                    }
+                }
+            };
+
+            return reportConfig;
+        },
+        ready: function () {
+            this.setReportData(); 
+        },
+
+        print: function() {
+            // grid, report, reportData, options, isprint
+            DLReport.preview(this.grdMain, this.report, null, this.printOptions, true);
+        },
+
+        preview: function() {
+            DLReport.preview(this.grdMain, this.report, null, this.printOptions, false);
+        },
+
+        setReportData: function() {
+            var reportData = [
+                id =""
+            ]
+
+            return reportData;
+        },
+
+        showGrid: function() {
+            DataLudi.setAssetRoot('images/grid');
+            
+            DataLudi.setDebug(false);
+            DataLudi.setLogging(false);
+
+            this.dsMain = DataLudi.createGridDataSet();
+            this.dsMain.setDatetimeFormat("yyyy-MM-dd a hh:mm:ss").setAmText("오전").setPmText("오후");
+            this.setFields(this.dsMain);
+
+            this.grdMain = DataLudi.createGridView("container", null, false);
+            this.grdMain.setDataSource(this.dsMain);
+
+            this.setColumns(this.grdMain);
+            this.setOptions(this.grdMain);
+            this.setStyles(this.grdMain);
+
+            this.loadData(this.dsMain);
+        },
+
+        setFields: function(dsMain) {
+            var fields = [{
+                fieldName: "product_id",
+                dataType: "text"
+            }, {
+                fieldName: "product_name",
+                dataType: "text"
+            }, {
+                fieldName: "customer_id",
+                dataType: "text"
+            }, {
+                fieldName: "customer_name",
+                dataType: "text"
+            }, {
+                fieldName: "country",
+                dataType: "text"
+            }, {
+                fieldName: "phone",
+                dataType: "text"
+            }, {
+                fieldName: "unit",
+                dataType: "text"
+            }, {
+                fieldName: "currency",
+                dataType: "text"
+            }, {
+                fieldName: "unit_price",
+                dataType: "number"
+            }, {
+                fieldName: "quantity",
+                dataType: "number"
+            }, {
+                fieldName: "order_date",
+                dataType: "text"
+            }, {
+                fieldName: "ship_date",
+                dataType: "text"
+            }];
+
+            dsMain.setFields(fields);
+        },
+
+        setColumns: function(grid) {
+            var columns = [{
+                "name": "product_name",
+                "fieldName": "product_name",
+                "width": "90",
+                "styles": {},
+                "header": {
+                    "text": "ProductName"
+                }
+            }, {
+                "name": "customer_id",
+                "fieldName": "customer_id",
+                "width": "60",
+                "styles": {},
+                "header": {
+                    "text": "Customer"
+                }
+            }, {
+                "name": "customer_name",
+                "fieldName": "customer_name",
+                "width": "70",
+                "styles": {},
+                "header": {
+                    "text": "CustomerName"
+                }
+            }, {
+                "name": "phone",
+                "fieldName": "phone",
+                "width": "125",
+                "styles": {
+                    "textAlignment": "center"
+                },
+                "header": {
+                    "text": "Phone"
+                }
+            }, {
+                "name": "country",
+                "fieldName": "country",
+                "width": "70",
+                "styles": {},
+                "header": {
+                    "text": "Country"
+                },
+                "footer": {
+                    "text": "xxx",
+                    "styles": {
+                        "background": "#888888"
+                    }
+                }
+            }, {
+                "name": "quantity",
+                "fieldName": "quantity",
+                "width": 50,
+                "styles": {
+                    "textAlignment": "far"
+                },
+                "header": {
+                    "text": "Quantity"
+                },
+                "footer": {
+                    "expression": "sum",
+                    "styles": {
+                        "background": "#bbddff",
+                        "color": "#00f",
+                        "numberFormat": "#,##0",
+                        "fontName": "Arial",
+                        "fontBold": true,
+                        "fontSize": 14
+                    }
+                }
+            }, {
+                "name": "order_date",
+                "fieldName": "order_date",
+                "width": "90",
+                "styles": {
+                    "datetimeFormat": "yyyy-MM-dd",
+                    "textAlignment": "center"
+                },
+                "header": {
+                    "text": "OrderDate"
+                }
+            }, {
+                "name": "ship_date",
+                "fieldName": "ship_date",
+                "width": "90",
+                "styles": {
+                    "datetimeFormat": "yyyy-MM-dd",
+                    "textAlignment": "center"
+                },
+                "header": {
+                    "text": "ShipDate"
+                },
+                "footer": {
+                    "text": "ShipDate",
+                    "styles": {
+                        "background": "#bbffdd"
+                    }
+                }
+            }];
+            grid.setColumns(columns);
+        },
+
+        setOptions: function(grid) {
+            grid.setOptions({
+                panel: {
+                    visible: false
+                },
+                stateBar: {
+                    visible: false
+                },
+                footer: {
+                    visible: false
+                },
+                display: {
+                    selectStyle: DataLudi.SelectionStyle.ROWS
+                }
+            });
+        },
+
+        setStyles: function() {
+            this.grdMain.loadStyles({
+                selection: {
+                    background: "#11000000",
+                    border: "#88000000,1"
+                }
+            });
+        },
+
+        loadData: function(provider) {
+            this.dsMain.setRows([{
+                "product_id": "1",
+                "product_name": "computer",
+                "customer_id": "1",
+                "customer_name": "Customer Name",
+                "country": "Korea",
+                "phone": "010-1234-5678",
+                "unit": "500",
+                "currency": "dollor",
+                "unit_price": 1200,
+                "quantity": 200,
+                "order_date": "2015-05-18",
+                "ship_date": "2014-08-07"
+            }, {
+                "product_id": "1",
+                "product_name": "computer",
+                "customer_id": "2",
+                "customer_name": "Customer Name",
+                "country": "Korea",
+                "phone": "010-1234-5678",
+                "unit": "500",
+                "currency": "dollor",
+                "unit_price": 1200,
+                "quantity": 200,
+                "order_date": "2015-05-18",
+                "ship_date": "2014-08-07"
+            }]);
+        }
+    })
+    </script>
+</dom-module>

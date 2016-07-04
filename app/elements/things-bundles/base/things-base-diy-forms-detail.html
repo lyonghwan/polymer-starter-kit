@@ -1,0 +1,137 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../../bower_components/paper-header-panel/paper-header-panel.html">
+<link rel="import" href="../../../bower_components/paper-tabs/paper-tabs.html">
+<link rel="import" href="../../../bower_components/iron-pages/iron-pages.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../../bower_components/things-attached-file/things-attached-file.html">
+<link rel="import" href="../../../bower_components/things-code-editor/things-template-editor.html">
+<link rel="import" href="../../../bower_components/things-detail/things-resource-detail-tab-view-behavior.html">
+<link rel="import" href="../../../bower_components/things-extension/things-extension.html">
+<link rel="import" href="../../../bower_components/things-form/things-resource-form.html">
+
+<link rel="import" href="./things-base-view-columns-grid.html">
+
+<!--
+  Diy Form 상세 View
+-->
+
+<dom-module id="things-base-diy-forms-detail">
+  <template>
+    <style>
+      :host {
+        display: block;
+        height: 100%;
+        width: 100%;
+        @apply(--layout-vertical);
+        --paper-header-panel-standard-container: {
+            @apply(--layout-vertical);
+        };
+      }
+      paper-header-panel {
+        @apply(--layout-flex);
+        @apply(--layout-vertical);
+      }
+      .iron-pages {
+        @apply(--layout-flex);
+        @apply(--layout-vertical);
+      }
+      .detail-flex {
+        @apply(--layout-flex);
+      }
+    </style>
+
+    <paper-header-panel mode="standard" class="green">
+      <paper-tabs id="tabGroup" class="paper-header" selected="{{currentTabIdx}}" noink scrollable>
+        <template is="dom-repeat" items="{{_panels}}">
+          <paper-tab id="{{item.elementId}}">{{item.title}}</paper-tab>
+        </template>
+      </paper-tabs>
+
+      <things-ajax 
+        auto
+        id="get-resource"
+        resource-url="[[resourceUrl]]"
+        resource-id="[[resourceId]]"
+        resource-action="find"
+        last-response="{{resource}}">
+      </things-ajax>
+
+      <iron-pages id="tabPages" selected="{{currentTabIdx}}" class="iron-pages">
+        <things-resource-form
+          id="resource-form" 
+          resource-url="[[resourceUrl]]"
+          resource="{{resource}}"
+          form-fields="[[formFields]]"
+          remove-fields-on-save="[[removeFieldsOnSave]]">
+        </things-resource-form>
+
+        <!--things-template-editor 
+          id="search-field"
+          class="detail-flex"
+          theme="ace/theme/monokai"
+          mode="ace/mode/json"
+          resource="{{resource}}"
+          template-field="searchs"
+          save-url="[[resourceUrl]]">
+        </things-template-editor>
+
+        <things-template-editor 
+          id="detail-form-field"
+          class="detail-flex"
+          theme="ace/theme/monokai"
+          mode="ace/mode/json"
+          resource="{{resource}}"
+          template-field="details"
+          save-url="[[resourceUrl]]">
+        </things-template-editor-->
+
+        <things-base-view-columns-grid
+          id="column-grid"
+          class="detail-flex"
+          ignore-display-fields="on_type,on_id,ref_url,sort_rank,reverse_sort,search_rank,search_editor,search_format,search_name,search_oper,grid_rank,grid_editor,grid_validator,grid_format,grid_width,grid_align"
+          src-resource-name="[[resource.entity_name]]"
+          resource-name="DiyForm"
+          resource-id="[[resourceId]]">
+        </things-base-view-columns-grid>
+      </paper-header-panel>
+    </iron-pages>
+  </template>
+
+  <script>
+    Polymer({
+
+      is: 'things-base-diy-forms-detail',
+
+      behaviors: [ 
+        Things.ResourceDetailTabViewBahavior
+      ],
+
+      properties: {
+        /**
+         * Save 하기 전에 폼에는 있지만 Save하는데 필요 없는 필드를 삭제하기 위한 필드명
+         */
+        removeFieldsOnSave: {
+          type: Array,
+          value: ['creator', 'updater', 'creator_id', 'updater_id', 'created_at', 'updated_at']
+        }
+      },
+
+      ready: function() {
+        this._panels = [ {
+          title: Things.DataGlobal.t('title.basic_info'),
+          elementId: 'things-resource-form'
+        }, /*{
+          title: Things.DataGlobal.t('title.search_fields'),
+          elementId: 'things-template-editor'
+        }, {
+          title: Things.DataGlobal.t('title.detail_form_fields'),
+          elementId: 'things-template-editor'
+        }, */{
+          title: Things.DataGlobal.t('title.columns'),
+          elementId: 'things-base-view-columns-grid'
+        } ];
+      }
+    });
+  </script>
+</dom-module>

@@ -1,0 +1,314 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../../bower_components/things-global-behavior/things-global-behavior.html">
+<link rel="import" href="../../../bower_components/things-msg-box-behavior/things-msg-box-behavior.html">
+<link rel="import" href="../../things-meta-view/things-diy-based-grid.html">
+
+<!--
+OI Screen - Order List
+-->
+
+<dom-module id="things-term-orders">
+	<template>
+		<style>
+			:host {
+				display: inline-block;
+				background-color:var(--things-whitegrey-background-color);
+				@apply(--layout-vertical);
+				@apply(--layout-flex);
+				margin-top:20px;
+			}
+			paper-toolbar {
+				background-color:var(--things-primary-background-color);
+				height:45px;
+				margin-top:0px !important;
+				@apply(--things-padding-clear)
+			}
+			paper-toolbar::shadow #topBar {
+				height:45px;
+			}
+			paper-toolbar .title {
+				margin-left:32px !important;
+				line-height:initial !important;
+			}      
+			things-layout-gaia {
+				@apply(--layout-flex);
+			}
+			#fullscreen-btn {
+				@apply(--things-header-button);
+				background:url(/images/icon-fullscreen.png) 100% 50% no-repeat;
+			}
+		</style>
+
+		<things-ajax
+			id="order-list"
+			resource-action="index"
+			resource-url="work_orders"
+			last-response="{{lastResponse}}">
+		</things-ajax>
+
+		<things-ajax
+			id="order-trx"
+			method="POST"
+			content-type="application/json">
+		</things-ajax>
+
+		<things-diy-based-grid
+			content
+			paginatable
+			id="grid"
+			class="flex"
+			diy-grid-name="OI-WorkOrders"
+			page="[[page]]"
+			per-page="30"
+			items="[[items]]"
+			item-count="[[itemCount]]"
+			buttons="[[buttons]]">
+		</things-diy-based-grid>
+	</template>
+
+	<script>
+		Polymer({
+			is: 'things-term-orders',
+
+      behaviors: [
+      	Things.GlobalBehavior,
+        Things.MsgBoxBehavior
+      ],
+
+			properties: {
+				/**
+				 * 메뉴 정보
+				 */
+				menuInfo: {
+					type: Object
+				},
+
+				/**
+				 * 라우팅 정보
+				 */
+				dataRoute: {
+					type: String,
+					observer: 'dataRouteChanged'
+				},
+
+				/**
+				 * 날짜 
+				 */
+				workDate: {
+					type: String
+				},
+
+				/**
+				 * Line 
+				 */
+				line: {
+					type: String
+				},
+
+				/**
+				 * Last Response
+				 */
+				lastResponse: {
+					type: Object,
+					observer: '_orderResponseChanged'
+				},
+
+				/**
+				 * Order List
+				 */
+				items: {
+					type: Array
+				},
+
+				/**
+				 * Total Order Count
+				 */
+				itemCount: {
+					type: Number,
+					value: 0
+				},
+
+				/**
+				 * Current Page
+				 */
+				page: {
+					type: Number,
+					value: 1
+				},
+
+				/**
+				 * Grid에서 사용할 이미지 리스트 
+				 */
+				gridImageItems: {
+					type: Array,
+					value: function() {
+						return [
+							'iconDetail.png',
+							'ellipsis_hover.png',
+							'indicator_insert.png',
+							'menu_button.png',
+							'menu_button_hover.png',
+							'error_info.png',
+							'error_error.png',
+							'error_warning.png',
+							'indicator_edit.png',
+							'menu_check.png'
+						];
+					}
+				},				
+
+				/**
+				 * Buttons
+				 */
+				buttons: {
+					type: Array,
+					value: function() {
+						return [ {
+							id: 'search-btn',
+							text: 'search'
+						} ];
+					}
+				}
+			},
+
+			observers: [
+				'orderConditionsChanged(globals.date,globals.line)'
+			],			
+
+			listeners: {
+				'things-grid-configured' : '_gridConfigured',
+				'things-grid-column-dblclicked' : '_gridDoubleClicked',
+				'order-trx.things-ajax-response' : '_transactionResponsed',
+				'search-btn-tap' : 'searchOrderList'
+			},
+
+			/**
+			 * Grid 구성 완료 후 
+			 *
+			 * @param {Objec} event
+			 */
+			_gridConfigured: function(event) {
+				event.detail.registerImageList({
+					name: 'images',
+					root: event.srcElement.gridImageDir,
+					items: this.gridImageItems
+				});
+			},
+
+			/**
+			 * Grid Double Click 후 
+			 *
+			 * @param {Objec} event
+			 */
+			_gridDoubleClicked: function(event) {
+				var index = event.detail.index;
+				if(index.column.name() == '_status_') {
+					var grid = event.detail.grid;
+					var row = grid.focusedRow();
+					var data = row.getRowObject();
+					var status = data.status;
+					var title = null, trxUrl = null;
+
+					if(status == 'WAITING') {
+						title = Things.DataGlobal.t('label.start');
+						trxUrl = 'start';
+					} else if(status == 'RUNNING') {
+						title = Things.DataGlobal.t('label.lock');
+						trxUrl = 'lock';
+					} else if(status == 'LOCKED') {
+						title = Things.DataGlobal.t('label.unlock');
+						trxUrl = 'unlock';
+					} else if(status == 'FINISHED') {
+						title = Things.DataGlobal.t('label.close');
+						trxUrl = 'close';
+					} else {
+						return;
+					}
+
+					var trxAjax = this.$['order-trx'];
+					this.openConfirmMsg({
+						type : 'info',
+						title : title,
+						text : Things.DataGlobal.t('text.Sure to X', {x : title}),
+						showCancelButton : true
+					}, function() {
+						trxAjax.resourceUrl = 'work_orders/' + data.id + '/' + trxUrl;
+						trxAjax.generateRequest();
+					});
+				}
+			},
+
+			/**
+			 * dataRoute가 변경되었을 경우 
+			 *
+			 * @param {String} dataRoute
+			 */
+			dataRouteChanged: function(dataRoute) {
+				if(dataRoute == this.menuInfo.routing) {
+					this.searchOrderList();
+				}
+			},
+
+			/**
+			 * Order List 조건이 변경되었을 경우 
+			 *
+			 * @param {String} date
+			 */
+			orderConditionsChanged: function(date, line) {
+				this.workDate = date;
+				this.line = line;
+				this.searchOrderList();
+			},
+
+			/**
+			 * dataRoute가 변경되었을 경우 
+			 */
+			searchOrderList: function(event) {
+				if(!this.line) {
+					this.openInfoMsg({ 
+						title : 'Setting Error!', 
+						text : Things.DataGlobal.t('error.SHOULD_NOT_BE_EMPTY', {value : Things.DataGlobal.t('label.line')}), 
+						type : 'info', 
+						timer : 10000 
+					});
+
+					return false;
+				}
+
+				var ordersAjax = this.$['order-list'];
+				ordersAjax.queryFields = [{
+					name : 'order_date', value : this.workDate 
+				}, {
+					name : 'line', value : this.line 
+				}];
+				
+				ordersAjax.sortFields = [{
+					field : 'order_date', ascending: true 
+				}, {
+					field : 'shift', ascending: true 
+				}];
+
+				ordersAjax.generateRequest();
+			},
+
+			/**
+			 * 조회 데이터 변경시 
+			 *
+			 * @param {Object} lastResponse
+			 */
+			_orderResponseChanged: function(lastResponse) {
+				this.items = (this.menuInfo.items_prop && lastResponse[this.menuInfo.items_prop]) ? lastResponse[this.menuInfo.items_prop] : lastResponse;
+				this.itemCount = (this.menuInfo.total_prop && lastResponse[this.menuInfo.total_prop]) ? lastResponse[this.menuInfo.total_prop] : lastResponse.length;
+			},
+
+			/**
+			 * 트랜잭션 성공시 
+			 *
+			 * @param {Object} event
+			 */
+			_transactionResponsed: function(event) {
+				this.searchOrderList();
+			}
+		});
+	</script>
+</dom-module>

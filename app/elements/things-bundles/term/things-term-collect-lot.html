@@ -1,0 +1,254 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+
+<link rel="import" href="../../things-layout-view/things-layout-athena.html">
+<link rel="import" href="../../things-meta-view/things-diy-based-grid.html">
+<link rel="import" href="../../things-meta-view/things-diy-based-form.html">
+
+<link rel="import" href="things-term-common-grid.html">
+<link rel="import" href="things-lot-based-transaction-behavior.html">
+
+<!--
+  OI - Collect LOT 트랜잭션 
+-->
+
+<dom-module id="things-term-collect-lot">
+  <template>
+    <style>
+      :host {
+        display: block;
+        @apply(--layout-vertical);
+        @apply(--layout-flex);
+      }
+      things-layout-athena {
+        @apply(--layout-flex);
+      }
+    </style>
+
+    <things-ajax
+      id="validate-lot"
+      resource-action="create"
+      resource-url="lot_trxs/VALIDATE/transaction"
+      last-response="{{lot}}">
+    </things-ajax>
+
+    <things-ajax
+      id="transaction"
+      resource-action="create"
+      resource-url="[[transactionUrl]]">
+    </things-ajax>
+
+    <things-layout-athena 
+      left-content-title="[[collectLotListTitle]]"
+      right-top-content-title="[[collectLotTitle]]" 
+      right-bottom-content-title="[[collectValueTitle]]">
+      <things-term-common-grid
+        left
+        id="latest-lot-grid"
+        class="flex"
+        resource-url="spc_items"
+        diy-grid-name="OI-SPCList"
+        query-fields="[[latestLotQueryFields]]">
+      </things-term-common-grid>
+      
+      <things-diy-based-form 
+        right-top
+        id="lot-info-form"
+        class="flex"
+        diy-form-name="OI-SPC">
+      </things-diy-based-form>
+
+      <things-diy-based-form
+        right-bottom
+        id="input-form"
+        class="flex"
+        buttons="[[buttons]]"
+        diy-form-name="OI-SPCResult">
+      </things-diy-based-form>
+    </things-layout-athena>
+  </template>
+
+  <script>
+    Polymer({
+      is: 'things-term-collect-lot',
+      
+      behaviors: [
+        Things.LotBasedTransactionBehavior
+      ],
+
+      properties: {
+        /**
+         * Title Of Lot Information
+         */
+        collectLotListTitle: {
+          type: String,
+          value: function() {
+            return Things.DataGlobal.t('label.collection_set')
+          }
+        },
+
+        /**
+         * Title Of SPC Item
+         */
+        collectLotTitle: {
+          type: String,
+          value: function() {
+            return Things.DataGlobal.t('label.collection_item')
+          }
+        },
+
+        /**
+         * Title Of SPC Data
+         */
+        collectValueTitle: {
+          type: String,
+          value: function() {
+            return Things.DataGlobal.t('menu.LotCollection')
+          }
+        },
+
+        /**
+         * 선택한 spc item의 세부 정보를 담아 놓는 object
+         */
+        spcItemData: {
+          type: Object
+        },
+
+        /**
+         * button setting
+         */
+        buttons: {
+          type: Array,
+          value: function() {
+            return [{
+              id: 'process-btn',
+              text: 'process'              
+            }]
+          }
+        }
+      },
+
+      observers: [
+        'lotListConditionsChanged(order,operationId)'
+      ],
+
+      listeners: {
+        'process-btn-tap' : 'lotTransaction',
+        'transaction.things-ajax-response' : 'transactionResponsed',
+        'latest-lot-grid.things-grid-row-data-select' : 'rowSelected',
+        'things-grid-configured' : 'latestLotGridConfigured'
+      },
+
+      /**
+       * Life Cycle - Ready
+       */
+      ready: function() {
+        this.transaction = 'SPC';
+      },
+
+      /**
+       * Latest Lot List 검색 조건 변경시 
+       *
+       * @param {String} orderId
+       * @param {String} operationId
+       */
+      lotListConditionsChanged: function(order, operationId) {
+        this.latestLotQueryFields = [ {
+          name: 'operation_id',
+          value: operationId
+        }, {
+          name: 'product_model_id',
+          value: order.product_model.id
+        }];
+
+        this.refreshLatestLots();
+      },
+
+      /**
+       * Latest Lot Grid 변경시
+       */
+      latestLotGridConfigured: function(event) {
+        this.refreshLatestLots();
+      },
+
+      /**
+       * Lot Information Form
+       */
+      getLotInfoForm: function() {
+        return this.$['lot-info-form'];
+      },
+
+      /**
+       * Latest Lot List Grid
+       */
+      getLatestLotGrid: function() {
+        return this.$['latest-lot-grid'];
+      },
+
+      /**
+       * Validation Lot Service
+       */
+      getValidateLotService: function() {
+        return this.$['validate-lot'];
+      },
+
+      /**
+       * Transaction Lot Service
+       */
+      getTransactionLotService: function() {
+        return this.$['transaction'];
+      },
+      
+      /**
+       * spc item list click event
+       */
+      rowSelected: function(event) {
+        this.spcItemData = event.detail;
+        this.$['lot-info-form'].getForm().setFormData(this.spcItemData);
+      },
+
+      /**
+       * Lot Transaction
+       */
+      lotTransaction: function() {
+        var inputData = this.$['input-form'].getForm().serializeMyForm();
+        var lotData = this.getLotInfoForm().getForm().serializeMyForm();
+        var spcData = this.spcItemData;
+        var tranAjax = this.getTransactionLotService();
+
+        if(!inputData.value1 || !inputData.value2 || !inputData.value3 || !inputData.value4 || !inputData.value5) return;
+
+        tranAjax.body = {
+          work_order_id : this.orderId,
+          current_operation_id: this.operationId,
+          material_id: this.order.material.id,
+          spc_item_id: spcData.id,
+          value1: inputData.value1,
+          value2: inputData.value2,
+          value3: inputData.value3,
+          value4: inputData.value4,
+          value5: inputData.value5
+        };
+
+        tranAjax.generateRequest();
+      },
+
+      /**
+       * 트랜잭션 성공시 
+       *
+       * @param {Object} event
+       */
+      transactionResponsed: function(event) {
+        if(!this.checkTransactionResponse(event)) {
+          return;
+        }
+        
+        this.refreshLatestLots();
+        this.resetForm();
+        this.$['input-form'].getForm().resetMyForm();
+        this.fire('iron-signal', {name : 'refresh-wip'});
+      }
+    });
+  </script>
+</dom-module>

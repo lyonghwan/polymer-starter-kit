@@ -1,0 +1,354 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../../bower_components/things-tristate-radio/things-tristate-radio.html">
+<link rel="import" href="../../../bower_components/things-input-field/things-input-field.html">
+
+<link rel="import" href="../../things-layout-view/things-layout-mercury.html">
+<link rel="import" href="../../things-label-print/things-print-agent.html">
+<link rel="import" href="../../things-meta-view/things-diy-based-form.html">
+
+<link rel="import" href="things-term-common-behavior.html">
+<link rel="import" href="things-term-common-grid.html">
+
+<!--
+OI Screen - Order List
+-->
+
+<dom-module id="things-term-create-lot">
+	<template>
+		<style>
+			:host {
+				display: block;
+				@apply(--layout-vertical);
+				@apply(--layout-flex);
+			}
+			things-layout-mercury {
+				@apply(--layout-flex);
+			}
+			paper-toolbar {
+				background-color:var(--things-white-background-color);
+				height: 50px;
+				@apply(--things-tight-padding);
+			}
+			paper-toolbar::shadow #bottomBar {
+				height: 50px;
+				@apply(--layout-horizontal);
+				@apply(--layout-end-justified);
+				padding: 0 10px;
+			}			
+		</style>
+
+		<things-ajax
+			id="get-order"
+			resource-action="find"
+			resource-url="work_orders/:id"
+			resource-id="[[orderId]]"
+			last-response="{{order}}">
+		</things-ajax>
+
+		<things-ajax
+			id="create-lot"
+			resource-action="create"
+			resource-url="lot_trxs/CREATE/transaction">
+		</things-ajax>
+
+		<things-ajax
+			id="label-model"
+			resource-action="find"
+			resource-url="lots/:id/label">
+		</things-ajax>
+
+		<things-print-agent id="print-agent"></things-print-agent>
+
+		<things-layout-mercury 
+			left-top-content-title="[[inputTitle]]" 
+			left-bottom-content-title="[[orderInfoTitle]]" 
+			right-content-title="[[lotListTitle]]">
+
+			<div left-top class="flex">
+				<things-input-field
+					on-keypress="handleKeyPress"
+					id="comments"
+					label="Comments">
+				</things-input-field>
+
+				<things-tristate-radio
+					id="print"
+					label="Print">
+				</things-tristate-radio>
+
+				<paper-toolbar id ="toolbar" justify='end'>
+					<div class="bottom">
+						<things-button-bar id="button-group" buttons="[[buttons]]"></things-button-bar>
+					</div>
+				</paper-toolbar>
+			</div>
+
+			<things-diy-based-form
+				left-bottom
+				id="form"
+				class="flex"
+				resource="[[order]]"
+				resource-id="[[orderId]]"
+				diy-form-name="OI-CreateLot">
+			</things-diy-based-form>
+
+			<things-term-common-grid
+				right
+				id="common-grid"
+				class="flex">
+			</things-term-common-grid>
+		</things-layout-mercury>
+	</template>
+
+	<script>
+		Polymer({
+			
+			is: 'things-term-create-lot',
+
+			behaviors: [
+				Things.TermCommonBehavior
+			],
+
+			properties: {
+				/**
+				 * 메뉴 정보
+				 */
+				menuInfo: {
+					type: Object
+				},
+
+				/**
+				 * 라우팅 정보
+				 */
+				dataRoute: {
+					type: String,
+					observer: 'dataRouteChanged'
+				},
+
+				/**
+				 * 오더
+				 */
+				order: {
+					type: Object,
+					notify: true
+				},
+				
+				/**
+				 * 오더 아이디
+				 */
+				orderId: {
+					type: String
+				},
+
+				/**
+				 * 생성된 Lot
+				 */
+				lot: {
+					type: Object
+				},
+
+				/**
+				* Buttons 리스트 설정
+				*/
+				buttons: {
+					type: Array,
+					value: [ {
+						id: 'create-btn',
+						text: 'create'
+					}, {
+						id: 'reset-btn',
+						text: 'reset'
+					} ]
+				},
+
+				/**
+				 * Title Of Order Information
+				 */
+				orderInfoTitle: {
+					type: String,
+					value: function() {
+						return Things.DataGlobal.t('title.OrderInformation')
+					}
+				},
+
+				/**
+				 * Title Of Input
+				 */
+				inputTitle: {
+					type: String,
+					value: function() {
+						return Things.DataGlobal.t('title.Input')
+					}
+				},
+
+				/**
+				 * Title Of Lot List
+				 */
+				lotListTitle: {
+					type: String,
+					value: function() {
+						return Things.DataGlobal.t('title.LotList')
+					}
+				}
+			},
+
+			listeners: {
+				'create-btn-tap' : 'createLot',
+				'reset-btn-tap' : 'resetForm',
+				'create-lot.things-ajax-response' : '_transactionResponsed',
+				'label-model.things-ajax-response' : '_labelModelResponsed'
+			},
+
+			observers: [
+				'orderChanged(globals.order)',
+			],
+
+			/**
+			 * order가 변화하면 order와 orderId를 초기화 하고 common-grid의 ajax를 호출 한다.
+			 * 
+			 * @param {Object} order
+			 */
+			orderChanged: function(order) {
+				this.order = order;
+				this.orderId = order ? order.id : '';
+				this.getLatestLots();
+				if(this.orderId) {
+					this.$['get-order'].generateRequest();
+				}
+			},
+
+			/**
+			 * dataRoute가 변경되었을 경우 
+			 *
+			 * @param {String} dataRoute
+			 */
+			dataRouteChanged: function(dataRoute) {
+				if(dataRoute == this.menuInfo.routing) {
+					if(this.globals) {
+						var dataGlobal = this.globals;
+						this.orderId = (dataGlobal.order.id) ? dataGlobal.order.id : '';
+					}
+				}
+			},
+
+			/**
+			 * key event - form submits when enter key is monitored
+			 *
+			 * @param {Object} event
+			 */
+			handleKeyPress: function(event) {
+				var code = event.keyCode;
+				if(code == 13) {
+					this.createLot();
+				}
+			},
+
+			/**
+			 * Create Lot 
+			 */
+			createLot: function() {
+				if(!this.checkOrder()) return;
+
+				var createAjax = this.$['create-lot'];
+				createAjax.body = {
+					work_order_id : this.orderId,
+					comments : this.$['comments'].value
+				};
+
+				createAjax.generateRequest();
+			},
+
+			/**
+			 * queryFields를 초기화하고 해당 property를 바탕으로 common-grid의 ajax 호출
+			 */
+			getLatestLots: function() {
+				if(!this.checkOrder()) return;
+				
+				var lotsAjax = this.$['common-grid'];
+				lotsAjax.queryFields = [{
+					name: 'work_order_id',
+					value: this.orderId
+				}, {
+					name: 'transaction',
+					value: 'CREATE'
+				}];
+
+				lotsAjax.refreshData();
+			},
+
+			/**
+			 * Reset Form 
+			 *
+			 * @param {Object} event
+			 */
+			resetForm: function(event) {
+				this.$['comments'].value = '';
+			},
+
+			/**
+			 * Check Order
+			 */
+			checkOrder: function() {
+				if(!this.orderId) {
+					this.openInfoMsg({ 
+						title : 'Setting Error!', 
+						text : Things.DataGlobal.t('error.SHOULD_NOT_BE_EMPTY', {value : Things.DataGlobal.t('label.work_order')}), 
+						type : 'info', 
+						timer : 10000 
+					});
+
+					return false;
+				}
+
+				return true;
+			},			
+
+			/**
+			 * 트랜잭션 성공시 
+			 *
+			 * @param {Object} event
+			 */
+			_transactionResponsed: function(event) {
+				if(!this.checkTransactionResponse(event)) {
+					return;
+				}
+
+				this.getLatestLots();
+				this.resetForm();
+				this.fire('iron-signal', {name : 'refresh-wip'});
+				this.lot = event.detail;
+
+				// Get Label Model
+				if(this.$['print'].value == true) {
+					this.$['label-model'].resourceId = this.lot.id;
+					this.$['label-model'].generateRequest();
+				}
+			},
+
+			/**
+			 * labelModel 조회 후
+			 *
+			 * @param {Object} event
+			 */
+			_labelModelResponsed: function(event) {
+				var label = event.detail;
+				var variableData = {
+					'#{company_name}' : 'Hatio Lab.',
+					'#{order_name}' : this.order.name,
+					'#{product_model_name}' : this.order.product_model.name,
+					'#{material_name}' : this.order.material.name,
+					'#{material_desc}' : this.order.material.description,
+					'#{work_date}' : this.lot.work_date,
+					'#{lot_size}' : '' + this.lot.good_qty,
+					'#{lot_name}' : this.lot.name
+				};
+
+				var agent = this.$['print-agent'];
+				agent.label = label;
+				agent.convertData = variableData;
+				agent.printLabel();
+			}
+		});
+	</script>
+</dom-module>

@@ -1,0 +1,180 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../bower_components/paper-card/paper-card.html">
+<link rel="import" href="../../bower_components/paper-tabs/paper-tabs.html">
+<link rel="import" href="../../bower_components/iron-pages/iron-pages.html">
+
+<link rel="import" href="./things-layout-behavior.html">
+
+<!--
+	상하 분할, 하단 탭 3개 레이아웃
+-->
+
+<dom-module id="things-layout-poseidon">
+	<template>
+		<style>
+			:host {
+				display: inline-block;
+				@apply(--things-layout-poseidon);
+				@apply(--layout-flex);
+				@apply(--layout-vertical);
+			}
+			paper-card {
+			    background-color:transparent;
+			}
+			
+			iron-pages {
+				@apply(--layout-vertical);
+				@apply(--layout-flex);
+			}
+
+			#top {
+				@apply(--layout-flex);
+				@apply(--layout-horizontal);
+			}
+
+			.layout-content {
+				@apply(--layout-vertical);
+				@apply(--layout-flex);
+				overflow: auto;
+			}	
+
+			.subtitle:before {
+				content: '';
+				@apply(--things-subtitle-icon);
+			}
+
+			.subtitle {
+				@apply(--things-default-padding);
+				@apply(--things-subtitle);
+			}			
+			
+		</style>
+
+		<paper-card id="top" elevation="1">
+			
+			<div id="topLeft" class="layout-content">
+				<span class="subtitle">[[topLeftContentTitle]]</span>
+				<content select="[top-left]"></content>
+			</div>
+			<div id="topRight" class="layout-content">
+				<span class="subtitle">[[topRightContentTitle]]</span>
+				<content select="[top-right]"></content>
+			</div>
+		</paper-card>
+
+		<paper-tabs id="tab-group" selected="{{currentTabIdx}}" noink>
+			<template is="dom-repeat" items="{{sections}}" filter="isTabs">
+				<paper-tab id="{{item.tabId}}" on-tap="tabChanged">{{item.title}}</paper-tab>
+			</template>
+		</paper-tabs>
+
+		<iron-pages id="tabPages" selected="{{currentTabIdx}}">
+			<div class="layout-content">
+				<content select="[tab-content-1]"></content>
+			</div>
+			<div class="layout-content">
+				<content select="[tab-content-2]"></content>
+			</div>
+			<div class="layout-content">
+				<content select="[tab-content-3]"></content>
+			</div>
+				<div class="layout-content">
+			<content select="[tab-content-4]"></content>
+			</div>
+			<div class="layout-content">
+				<content select="[tab-content-5]"></content>
+			</div>
+			<div class="layout-content">
+				<content select="[tab-content-6]"></content>
+			</div>
+			<div class="layout-content">
+				<content select="[tab-content-7]"></content>
+			</div>
+			<div class="layout-content">
+				<content select="[tab-content-8]"></content>
+			</div>
+			<div class="layout-content">
+				<content select="[tab-content-9]"></content>
+			</div>
+		</iron-pages>
+	</template>
+
+	<script>
+		Polymer({
+			is: 'things-layout-poseidon',
+
+			properties: {
+				
+				/**
+				 * Top content title
+				 */
+				topContentTitle: {
+					type: String,
+					value: 'topContent'
+				},
+
+				/**
+				 * Sections
+				 */
+				sections: {
+					type: Array,
+					value: [ {
+						title: 'form1',
+						elementId: 'elementId1',
+						elementName: 'things-resource-form',
+						attributes: [
+							{ name: 'resource-id', value: '1' },
+							{ name : 'class', value : 'layout flex' }
+						] 
+					}, {
+						title: 'form2',
+						tabId: 'tabId2',
+						isTab: true, 
+						elementId: 'elementId2',
+						elementName: 'things-resource-form',
+						attributes: [
+							{ name:'resource-id', value : '2' },
+							{ name : 'class', value : 'layout flex' }
+						] 
+					},{
+						title: 'form3',
+						tabId: 'tabId3',
+						isTab: true,
+						elementId: 'elementId3',
+						elementName: 'things-resource-form',
+						attributes: [
+							{ name:'resource-id', value: '3' },
+							{ name : 'class', value : 'layout flex' }
+						]
+					}, {
+						title: 'form4',
+						tabId: 'tabId4',
+						isTab: true,
+						elementId: 'elementId4',
+						elementName: 'things-resource-form',
+						attributes: [
+							{ name:'resource-id', value: '4' },
+							{ name : 'class', value : 'layout flex' }
+						]
+					} ]
+				}
+			},
+
+			behaviors: [
+				Things.LayoutBehavior,
+				Things.DetailTabViewBahavior,
+				Polymer.IronSelectableBehavior,
+				Polymer.IronResizableBehavior,
+			],
+
+			isTabs : function(item) {
+				return item.isTab || false;
+			},
+
+			tabChanged: function(event) {
+				this.fire('things-layout-tab-changed', event);
+			}
+
+		});
+	</script>
+</dom-module>

@@ -1,0 +1,355 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../../bower_components/iron-icon/iron-icon.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../../bower_components/things-grid/things-resource-grid.html">
+<link rel="import" href="../../../bower_components/things-msg-box-behavior/things-msg-box-behavior.html">
+<link rel="import" href="../../../bower_components/things-resource-selector/things-resource-selector-behavior.html">
+<link rel="import" href="../../../bower_components/things-view-open-behavior/things-view-open-behavior.html">
+
+<dom-module id="things-base-menu-detail-main">
+  <template>
+    <style>
+      :host {
+        display:block;
+        @apply(--layout-vertical);
+      }
+      things-resource-grid {
+        @apply(--layout-flex);
+      }
+    </style>
+
+    <things-ajax 
+      id="detail-ajax"
+      method="GET"
+      resource-url="[[menuDetailsUrl]]"
+      resource-id="[[resourceId]]"
+      last-response="{{menuDetails}}">
+    </things-ajax>
+
+    <things-resource-grid 
+      id="grid"
+      config="[[gridConfig]]"
+      model="[[gridModel]]" 
+      columns="[[gridColumns]]"
+      data="[[items]]"
+      fixed-column-count="1"
+      grid-save-action="menu_details/update_multiple"
+      buttons="[[buttons]]">
+    </things-resource-grid>
+  </template>
+
+  <script>
+    Polymer({
+
+      is: 'things-base-menu-detail-main',
+
+      behaviors: [
+        Things.ResourceSelectorBehavior,
+        Things.MsgBoxBehavior,
+        Things.ViewOpenBehavior
+      ],      
+
+      properties: {
+
+        /**
+         * Menu Id
+         */
+        resourceId: {
+          type: String
+        },
+
+        /**
+         * Menu Detail Id
+         */
+        menuDetailId: {
+          type: String,
+          notify: true
+        },
+
+        /**
+         * Menu Details URL
+         */
+        menuDetailsUrl: {
+          type: String,
+          computed: '_computeMenuDetailsUrl(resourceId)',
+          observer: '_reloadGrid'
+        },
+
+        /**
+         * Menu Details
+         */
+        menuDetails: {
+          type: Object,
+          observer: '_menuDetailsChanged'
+        },
+
+        /**
+         * Menu Detail Items
+         */
+        items: {
+          type: Object,
+          notify: true
+        },
+
+        /**
+         * Save 하기 전에 폼에는 있지만 Save하는데 필요 없는 필드를 삭제하기 위한 필드명
+         */
+        removeFieldsOnSave: {
+          type: Array,
+          value: ['creator', 'updater', 'creator_id', 'updater_id', 'created_at', 'updated_at']
+        },        
+
+        /**
+         * Grid Model
+         */
+        gridModel: {
+          type: Array,
+          value: [ { 
+            fieldName: 'id'
+          }, { 
+            fieldName: 'menu_id'
+          }, { 
+            fieldName: 'name'
+          }, /*{ 
+            fieldName: 'term'
+          }, */{ 
+            fieldName: 'view_section'
+          }, { 
+            fieldName: 'entity', dataType: 'object'
+          }, { 
+            fieldName: 'entity_editor'
+          }, { 
+            fieldName: 'association'
+          }, {
+            fieldName: 'data_prop'            
+          }, { 
+            fieldName: 'search_url'
+          }, { 
+            fieldName: 'save_url'
+          }, { 
+            fieldName: 'master_field'
+          }, { 
+            fieldName: 'custom_view'
+          } ]
+        },
+        
+        /**
+         * Grid Columns
+         */
+        gridColumns: {
+          type: Array,
+          value: function() {
+            return [ { 
+              fieldName: 'id', name: 'id', width: 0 
+            }, { 
+              fieldName: 'menu_id', name: 'menu_id', width: 0 
+            }, { 
+              fieldName: 'name', name: 'name', width: 135,
+              header: { 
+                text: Things.DataGlobal.t('label.name')
+              }
+            }, /*{ 
+              fieldName: 'term', name: 'term', width: 135,
+              header: { 
+                text: Things.DataGlobal.t('label.term')
+              },
+              valueType: 'text', type: 'calced',
+              valueCallback: function(column, row) {
+                var term = row.getValue('term');
+                return term ? Things.DataGlobal.t(term) : '';
+              }
+            }, */{ 
+              fieldName: 'view_section', name: 'view_section', width: 135,
+              header: { 
+                text: Things.DataGlobal.t('label.view_section')
+              }
+            }, { 
+              fieldName: 'entity', name: 'entity', width: 135,
+              valueType: 'text', type: 'calced',
+              header: {
+                text: Things.DataGlobal.t('label.entity')
+              },
+              valueCallback: function(column, row) {
+                var obj = row.getValue(column._name);
+                return obj ? obj.name : '';
+              }
+            }, {
+                name: 'entity_editor',
+                fieldName: 'entity_editor',
+                width: 30,
+                editable: false,
+                header: { text: '...' },
+                imageList: 'images',
+                renderer: { type: 'icon' },
+                styles: {
+                  iconIndex: 'menu_button.png',
+                  iconLocation: 'center'
+                },
+                userObj: {
+                  resourceType: 'Entity',
+                  resourceName: 'Entity',
+                  resourceUrl: 'entities',
+                  ownerField: 'ref_name'
+                }
+            }, {
+              fieldName: 'custom_view', name: 'custom_view', width: 175,
+              header: { 
+                text: Things.DataGlobal.t('label.custom_view')
+              }
+            }, {
+              fieldName: 'association', name: 'association', width: 90,
+              header: { 
+                text: Things.DataGlobal.t('label.association')
+              },
+              lookupDisplay: true,
+              lookupValues: [ '', 'master', 'one-to-one', 'one-to-many' ],
+              lookupLabels: [ '', 'Master', '1:1', '1:N' ],
+              editor: { 
+                type: 'list',
+                domainOnly: true 
+              }
+
+            }, {
+              fieldName: 'master_field', name: 'master_field', width: 120,
+              header: { 
+                text: Things.DataGlobal.t('label.ref_field')
+              }
+            }, { 
+              fieldName: 'search_url', name: 'search_url', width: 200,
+              header: { 
+                text: Things.DataGlobal.t('label.url')
+              }
+            }, {
+              fieldName: 'save_url', name: 'save_url', width: 300,
+              header: { 
+                text: Things.DataGlobal.t('label.save_url')
+              }
+            }, {
+              fieldName: 'data_prop', name: 'data_prop', width: 120,
+              header: { 
+                text: Things.DataGlobal.t('label.data_prop')
+              }
+            } ]
+          }
+        },
+
+        /**
+         * 버튼 정보 
+         */
+        buttons: {
+          type: Array,
+          value: [ {
+            id: 'add-btn',
+            text: 'add'
+          }, {
+            id: 'delete-btn',
+            text: 'delete'
+          }, {
+            id: 'save-btn',
+            text: 'save'
+          } ]
+        }
+      },
+
+      listeners: {
+        'things-detail-view-selected' : '_detailTabSelected',
+        'grid.things-grid-resource-column-edit' : '_onGridColumnRefEdit',
+        'grid.things-grid-handle-save' : '_beforeSearchColumnSave',
+        'grid.things-grid-save-success' : '_reloadGrid',
+        'grid.things-grid-row-data-select' : '_menuDetailSelectionChanged'
+      },
+
+      /**
+       * 상세 탭 선택시 ...
+       */
+      _detailTabSelected: function(e) {
+        this.$.grid.resizeGrid();
+      },
+
+      /**
+       * 메뉴 디테일 선택 변경시
+       */
+      _menuDetailSelectionChanged: function(e) {
+        this.menuDetailId = e.detail.id;
+      },     
+
+      /**
+       * Menu Details 데이터가 변경되었을 경우 
+       *
+       * @param {Object} menuDetails
+       */
+      _menuDetailsChanged: function(menuDetails) {
+        this.items = menuDetails.items ? menuDetails.items : [];
+      },
+
+      /**
+       * List sorting
+       */
+      _sortColumns: function(list, sortField) {
+        list.sort(function(a, b) {
+          return (a[sortField] > b[sortField]) ? 1 : ((b[sortField] > a[sortField]) ? -1 : 0);
+        });
+      },
+
+      /**
+       * Menu Details를 찾기 위한 URL
+       *
+       * @param {String} menuId
+       */
+      _computeMenuDetailsUrl: function(menuId) {
+        var query = JSON.stringify([{name: 'menu_id', value: menuId}]);
+        return 'menu_details?query=' + query;
+      },      
+
+      /**
+       * Search Column 저장 전
+       *
+       * @param {Object} event menu-meta 저장 전 이벤트 
+       */
+      _beforeSearchColumnSave: function(event) {
+        var grid = event.target;
+        if(grid.writeData && grid.writeData.length > 0) {
+          var resourceId = this.resourceId;
+          grid.writeData.forEach(function(changedData) {
+            changedData.menu_id = resourceId;
+            changedData.entity_id = changedData.entity ? changedData.entity.id : null;
+
+            delete changedData['entity'];
+            delete changedData['term'];
+          });
+        }
+      },
+
+      /**
+       * Reload Grid Data
+       */
+      _reloadGrid: function(e) {
+        this.$['detail-ajax'].generateRequest();
+      },
+
+      /**
+       * Entity Ref Column Edit
+       *
+       * @param {Object} things-grid-resource-column-edit 이벤트 
+       */
+      _onGridColumnRefEdit: function(e) {
+        e.preventDefault();
+        var index = e.detail.index;
+        var grid = index._grid;
+        var dataSet = this.$.grid.getGridDataSet();
+        var row = dataSet.getRowObject(index.rowIndex);
+
+        var resourceObj = { 
+          resourceType : 'Entity',
+          resourceName : 'Entity',
+          ownerField : 'entity',
+          bindFields : 'search_url,save_url=multi_save_url,association,data_prop,master_field=ref_field'
+        };
+
+        this.openResourceSelectorByGrid(index._grid, index.rowIndex, resourceObj, true);
+      }      
+
+    });
+  </script>
+</dom-module>

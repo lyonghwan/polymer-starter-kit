@@ -1,0 +1,107 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../../bower_components/things-form/things-search-form.html">
+<link rel="import" href="../../../bower_components/things-grid/things-resource-grid.html">
+<link rel="import" href="../../../bower_components/things-upload/things-file-upload.html">
+
+<link rel="import" href="../../things-content/things-resource-menu-content-behavior.html">
+
+<!--
+	첨부파일 리스트와 첨부파일 업로드 기능을 제공하는 화면 셋 
+	things-attach-content는 첨부파일에 대한 검색 폼, 리스트가 기본으로 표시되고 첨부파일에 대하여 다운로드와 업로드가 가능하다.
+-->
+
+<dom-module id="things-base-attachment">
+	<template>
+		<style>
+			:host {
+				display: block;
+				@apply(--layout-vertical);
+				@apply(--layout-flex);
+			}
+
+			things-resource-grid {
+				@apply(--layout-flex);
+			}
+		</style>
+
+		<things-ajax 
+			auto
+			id="resource-meta"
+			method="GET"
+			resource-url="[[menuMetaUrl]]"
+			last-response="{{metaData}}">
+		</things-ajax>
+
+		<things-search-form 
+			id="search-form"
+			title="[[menuInfo.title]]"
+			form-fields="[[searchFormFields]]" 
+			action-url="[[menuInfo.resource_url]]" 
+			page="{{page}}"
+			per-page="[[perPage]]"
+			last-response="{{lastResponse}}">
+		</things-search-form>
+
+		<things-resource-grid 
+			id="grid"
+			config="[[gridConfig]]"
+			model="[[gridModel]]" 
+			columns="[[gridColumns]]"
+			data="[[items]]"
+			total-count="[[total]]"
+			current-page="{{page}}"
+			per-page="[[perPage]]"
+			grid-save-action="[[menuInfo.grid_save_url]]"
+			buttons="[[buttons]]">
+		</things-resource-grid>
+	</template>
+
+	<script>
+		Polymer({
+			is: 'things-base-attachment',
+
+			behaviors: [ 
+				Things.ResourceMenuContentBehavior
+			],
+			
+			properties: {
+			},
+
+			listeners : {
+				'grid.upload-btn-tap' : '_onTapUpload',
+				'grid.things-grid-detail-tap': '_downloadFile'
+			},
+
+			/**
+			 * Upload 버튼이 클릭되었을 경우 
+			 */
+			_onTapUpload: function(e) {
+				var upload = document.createElement('things-file-upload');
+				upload.id = 'file-upload';
+				upload.target = 'upload';
+				upload.method = 'POST';
+				upload.timeout = 300000;
+				upload.hidden = false;
+				this.openPopupView(upload, true);
+			},
+
+			/**
+			 * 그리드 셀 선택이 변경되었을 경우 파일 다운로드  
+			 */
+			_downloadFile: function(e) {
+				var baseUrl = this.get('globals.baseUrl');
+				this.openConfirmMsg({
+					type : 'info',
+					title : Things.DataGlobal.t('text.Want to download file'),
+					text : Things.DataGlobal.t('text.You can download file'),
+					showCancelButton: true
+				}, function() {
+					window.location = baseUrl + '/download/' + e.detail.id;
+				});
+			}
+
+		});
+	</script>
+</dom-module>

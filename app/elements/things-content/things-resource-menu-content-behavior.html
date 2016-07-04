@@ -1,0 +1,266 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../bower_components/things-detail/things-menu-detail-opener.html">
+<link rel="import" href="../../bower_components/things-global-behavior/things-global-behavior.html">
+<link rel="import" href="../../bower_components/things-meta/things-menu-meta-behavior.html">
+<link rel="import" href="../../bower_components/things-msg-box-behavior/things-msg-box-behavior.html">
+<link rel="import" href="../../bower_components/things-view-open-behavior/things-view-open-behavior.html">
+
+<script>
+
+window.Things = window.Things || {};
+
+/**
+ * 리소스 타입 메뉴 화면 Behavior
+ *
+ * @polymerBehavior Things.ResourceMenuContentBehavior
+ */
+Things.ResourceMenuContentBehaviorImpl = {
+
+	properties: {
+		/**
+		 * 조회 결과 
+		 */
+		menuInfo: {
+			type: Object,
+			observer: '_menuInfoChanged'
+		},
+
+		/**
+		 * 조회 결과 
+		 */
+		lastResponse: {
+			type: Object,
+			observer: '_responseChanged'
+		},
+
+		/**
+		 * 조회 결과 리스트 데이터 프로퍼티 명
+		 */
+		itemsProp: {
+			type: String,
+			value: 'items'
+		},
+
+		/**
+		 * 조회 결과 리스트 Total Count 프로퍼티 명
+		 */
+		totalProp: {
+			type: String,
+			value: 'total'
+		},
+
+		/**
+		 * 조회 결과 리스트 데이터
+		 */
+		items: {
+			type: Array
+		},
+
+		/**
+		 * 조회 결과 레코드 수  
+		 */
+		itemCount: {
+			type: Number
+		},
+
+		/**
+		 * Detail 버튼을 활성화 시킬 지 여부
+		 */
+		enableDetailColumn: {
+			type: Boolean,
+			value: false
+		},
+
+		/**
+		 * 그리드 Height
+		 * -1이면 layout flex가 적용되고 -1이 아니면 설정된 gridHeight가 적용됨 
+		 */
+		gridHeight: {
+			type: Number,
+			notify: true,
+			value: -1
+		}
+	},
+
+	/*listeners : {
+		'grid.things-grid-configured' : 'refreshGridData',
+		'grid.things-grid-save-success': 'refreshGridData',
+		'grid.things-grid-detail-tap': 'showDetailView'
+	},*/
+
+	/**
+	 * Life Cycle - Ready
+	 */
+	ready: function() {
+    var grid = this.$['grid'];
+    if(grid) {
+      this.listen(grid, 'things-grid-configured', 'refreshGridData');
+      this.listen(grid, 'things-grid-save-success', 'refreshGridData');  
+      this.listen(grid, 'things-grid-detail-tap', 'showDetailView');
+      this.listen(grid, 'things-grid-handle-open-import', 'openImportDialog');
+    }
+	},
+
+	/**
+	 * Resource Search Form을 리턴한다.
+	 */
+	getResourceSearchForm: function() {
+		return this.$['search-form'];
+	},
+
+	/**
+	 * Resource Grid를 리턴한다.
+	 */
+	getResourceGrid: function() {
+		return this.$.grid;
+	},
+
+	/**
+	 * ID Field를 리턴한다.
+	 */
+	getIdField: function() {
+		return (this.menuInfo && this.menuInfo.id_field) ? this.menuInfo.id_field : 'id';
+	},
+
+	/**
+	 * Title Field를 리턴한다.
+	 */
+	getTitleField: function() {
+		return (this.menuInfo && this.menuInfo.title_field) ? this.menuInfo.title_field : 'name';
+	},
+
+	/**
+	 * 메뉴 메타데이터 변경시
+   *
+	 * @param {Object} menuInfo
+	 */
+	_menuInfoChanged: function(menuInfo) {
+		if(menuInfo) {
+			this.menuId = menuInfo.id;
+			this.itemsProp = menuInfo.items_prop;
+			this.totalProp = menuInfo.total_prop;
+			var searchForm = this.getResourceSearchForm();
+			var resourceGrid = this.getResourceGrid();
+
+			if(resourceGrid) {
+				resourceGrid.enableDetailColumn = menuInfo.detail_form_id ? true : false;
+				resourceGrid.paginatable = menuInfo.pagination;
+			}
+
+			if(menuInfo.resource_type == 'ENTITY') {
+				searchForm.paramType = 'RESOURCE';
+
+			} else if(menuInfo.resource_type == 'DIY_SERVICE') {
+				searchForm.paramType = 'DIY';
+			}
+		}
+	},
+
+	/**
+	 * 조회 데이터 변경시 
+	 *
+	 * @param {Object} lastResponse
+	 */
+	_responseChanged: function(lastResponse) {
+		this.items = (this.itemsProp && lastResponse[this.itemsProp]) ? lastResponse[this.itemsProp] : lastResponse;
+		this.itemCount = (this.totalProp && lastResponse[this.totalProp]) ? lastResponse[this.totalProp] : lastResponse.length;
+	},
+
+	/**
+	 * Reload Grid. 서치 폼에서 다시 검색한다.
+	 */
+	refreshGridData: function(grid) {
+		this.getResourceSearchForm().submitMyForm();
+	},
+
+	/**
+	 * Import Dialog를 오픈한다.
+	 */
+	openImportDialog: function(event) {
+		event.preventDefault();
+		app.$['import-dialog'].open(this.gridConfig, this.gridModel, this.gridColumns, this.menuInfo);
+	},
+
+	/**
+	 * 디테일 뷰를 표시한다.
+	 *
+	 * @param {Event} event 그리드에서 선택된 event
+	 */
+	showDetailView: function(event) {
+		if(!this.menuInfo.detail_form_id || this.menuInfo.detail_form_id == 'things-resource-form') {
+			this.showResourceForm(event.detail, this.refreshGridData);
+
+		} else if(this.menuInfo.detail_form_id && this.menuInfo.detail_form_id == 'things-resource-detail') {
+			if(this.menuInfo.detail_layout) {
+				var detail = { detail: { menuInfo: this.menuInfo, resource: event.detail, resourceFormFields: this.resourceFormFields }};
+				var event = new CustomEvent('things-open-menu-detail-view', detail);
+				document.dispatchEvent(event);
+			}
+
+		} else if(this.menuInfo.detail_form_id != 'custom') {
+			this.showCustomView(this.menuInfo.detail_form_id, event.detail, this.refreshGridData);
+		}
+	},
+
+	/**
+	 * 표준화된 리소스 디테일 폼을 표시한다.
+	 *
+	 * @param {Object} selectedRecord 그리드에서 선택된 Row Data
+	 * @param {Function} saveCallback 저장 후 콜백 함수 
+	 */
+	showResourceForm: function(selectedRecord, saveCallback) {
+		var viewElement = document.createElement('things-resource-form');
+		this._setViewConfig('detail-view', viewElement, selectedRecord, saveCallback);
+		this.openPopupView(viewElement, true);
+	},
+
+	/**
+	 * 프레임 웍에서 기본으로 제공하지 않는 리소스 디테일 폼을 표시한다.
+	 *
+	 * @param {String} detailViewId 상세 뷰 아이디 
+	 * @param {Object} selectedRecord 그리드에서 선택된 Row Data
+	 * @param {Function} saveCallback 저장 후 콜백 함수 
+	 */
+	showCustomView: function(detailViewId, selectedRecord, saveCallback) {
+		var viewElement = document.createElement(detailViewId);
+		viewElement.attachable = true;
+		viewElement.propExtensible = true;
+		this._setViewConfig('detail-view', viewElement, selectedRecord, saveCallback);
+		viewElement.showDetailView(selectedRecord.id, selectedRecord);
+	},
+
+	/**
+	 * 선택된 레코드로 상세 뷰 Properties를 설정한다.
+	 *
+	 * @param {String} elementId
+	 * @param {Object} viewElement
+	 * @param {Object} selectedRecord
+	 * @param {Function} saveCallback 저장 후 콜백 함수 
+	 */
+	_setViewConfig: function(elementId, viewElement, selectedRecord, saveCallback) {
+		viewElement.id = elementId;
+		viewElement.title = this.menuInfo.title + ' (' + selectedRecord.name + ')';
+		viewElement.formFields = this.resourceFormFields;
+		viewElement.removeFieldsOnSave = this.ignoreFieldsOnSave;
+		viewElement.resourceType = this.menuInfo.resource_name;
+		viewElement.resourceId = selectedRecord.id;
+		viewElement.resourceUrl = this.menuInfo.resource_url + '/:id';
+
+		viewElement.addEventListener('things-resource-form-saved', function(e) {
+			viewElement.closePopupView();
+			saveCallback.apply(this);
+		}.bind(this));
+	}
+
+};
+
+Things.ResourceMenuContentBehavior = [
+	Things.ResourceMenuContentBehaviorImpl,
+	Things.MenuMetaBehavior,
+	Things.ViewOpenBehavior,
+	Things.MsgBoxBehavior,
+	Things.GlobalBehavior
+];
+
+</script>

@@ -1,0 +1,96 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../../bower_components/things-i18n-msg/things-i18n-msg.html">
+
+<dom-module id="things-wip-order-info">
+	<template>
+		<style>
+			div{
+				margin-top:7px;
+				color:var(--things-primary-text-color);
+			}
+			div label{
+				display:block;
+				margin-bottom:3px;
+				font-size:11px;
+				color:var(--things-primary-text-color);
+				opacity:.7
+			}
+			div strong{
+				color:var(--things-focus-background-color);
+			}
+    </style>
+
+		<things-ajax
+			id="order-search"
+			resource-action="find"
+			resource-url="[[resourceUrl]]"
+			resource-id="[[orderId]]"
+			last-response="{{lastResponse}}">
+		</things-ajax>
+
+		<div>
+			<label><things-i18n-msg msgid="label.material" auto>Material</things-i18n-msg></label>
+			[[lastResponse.material.name]]
+		</div>
+		<div>
+			<label><things-i18n-msg msgid="label.plan" auto>Plan</things-i18n-msg> / <things-i18n-msg msgid="label.input" auto>Input</things-i18n-msg> / <things-i18n-msg msgid="label.good" auto>Good</things-i18n-msg> / <things-i18n-msg msgid="label.scrap" auto>Scrap</things-i18n-msg></label>
+			[[lastResponse.plan_qty]] / <strong>[[lastResponse.input_qty]]</strong> / <strong>[[lastResponse.actual_qty]]</strong> / [[lastResponse.scrap_qty]]
+		</div>
+	</template>
+
+	<script>
+		Polymer({
+			is: 'things-wip-order-info',
+
+			properties: {
+				/**
+				 * resource url
+				 */
+				resourceUrl: {
+					type: String
+				},
+
+				/**
+				 * order id
+				 */
+				orderId: {
+					type: Number
+				},
+
+				/**
+				 * 전달받는 order object
+				 */
+				order: {
+					type: Object,
+					observer: '_orderChanged'
+				}
+			},
+
+			/**
+			 * order object의 변화를 갑지하여 ajax를 호출 합니다.
+			 */
+			_orderChanged: function(order) {
+				this.orderId = order.id;
+				this.resourceUrl = 'work_orders/' + this.orderId + '/actual_summary';
+				if(this.orderId) {
+					this.$['order-search'].generateRequest();
+				}
+			},
+
+			/**
+			 * order id를 통해 resource url을 계산합니다.
+			 */
+			_computeResourceUrl: function(order) {
+				return 'work_orders/' + order.id;
+			},
+
+			/**
+			 * Order 실적을 리프레쉬 
+			 */
+			refresh: function() {
+				this.$['order-search'].generateRequest();
+			}
+
+		});
+	</script>
+</dom-module>

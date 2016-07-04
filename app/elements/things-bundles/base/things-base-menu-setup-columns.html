@@ -1,0 +1,557 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../../bower_components/iron-icon/iron-icon.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../../bower_components/things-grid/things-resource-grid.html">
+<link rel="import" href="../../../bower_components/things-msg-box-behavior/things-msg-box-behavior.html">
+<link rel="import" href="../../../bower_components/things-resource-selector/things-resource-selector-behavior.html">
+<link rel="import" href="../../../bower_components/things-view-open-behavior/things-view-open-behavior.html">
+
+
+<dom-module id="things-base-menu-setup-columns">
+  <template>
+    <style>
+      :host {
+        display:block;
+        @apply(--layout-vertical);
+      }
+      things-resource-grid {
+        @apply(--layout-flex);
+      }
+    </style>
+
+    <things-ajax 
+      id="columns-sync-ajax"
+      method="POST"
+      resource-url="menus/:id/sync_menu_columns"
+      resource-id="[[resourceId]]"
+      last-response="{{menuMeta}}">
+    </things-ajax>
+
+    <things-ajax 
+      id="column-ajax"
+      method="GET"
+      resource-url="menus/:id/menu_meta?no_trans_term=true"
+      resource-id="[[resourceId]]"
+      last-response="{{menuMeta}}">
+    </things-ajax>
+
+    <things-resource-grid 
+      id="grid"
+      config="[[gridConfig]]"
+      model="[[gridModel]]" 
+      columns="[[gridColumns]]"
+      data="[[items]]"
+      grid-save-action="[[gridSaveUrl]]"
+      buttons="[[buttons]]">
+    </things-resource-grid>
+  </template>
+
+  <script>
+    Polymer({
+
+      is: 'things-base-menu-setup-columns',
+
+      behaviors: [
+        Things.ResourceSelectorBehavior,
+        Things.MsgBoxBehavior,
+        Things.ViewOpenBehavior
+      ],
+
+      properties: {
+
+        /**
+         * Menu Id
+         */
+        resourceId: {
+          type: String
+        },
+
+        /**
+         * Menu Data
+         */
+        resource: {
+          type: Object
+        },
+
+        /**
+         * Menu Meta Data
+         * 데이터 형식 : { menu : Object, buttons: Array, columns: Array }
+         */
+        menuMeta: {
+          type: Object,
+          notify: true,
+          observer: '_onMenuMetaChanged'
+        },
+
+        /**
+         * Menu columns 조회 정보 
+         */
+        items: {
+          type: Array
+        },        
+
+        /**
+         * Grid Model
+         */
+        gridModel: {
+          type: Array,
+          value: [ { 
+            fieldName: 'id'
+          }, { 
+            fieldName: 'menu_id'
+          }, { 
+            fieldName: 'rank'
+          }, { 
+            fieldName: 'name'
+          }, { 
+            fieldName: 'term'
+          }, { 
+            fieldName: 'trans'
+          }, { 
+            fieldName: 'col_type'
+          }, { 
+            fieldName: 'size'
+          }, { 
+            fieldName: 'virtual_field'
+          }, { 
+            fieldName: 'nullable'
+          }, { 
+            fieldName: 'uniq_rank'
+          }, { 
+            fieldName: 'search_rank'
+          }, { 
+            fieldName: 'sort_rank'
+          }, { 
+            fieldName: 'reverse_sort'
+          }, { 
+            fieldName: 'grid_rank'
+          }, { 
+            fieldName: 'ref_type'
+          }, { 
+            fieldName: 'ref_name'
+          }, {
+            fieldName: 'ref_name_editor'
+          }, { 
+            fieldName: 'ref_url'
+          }, { 
+            fieldName: 'ref_params'
+          }, { 
+            fieldName: 'ref_related'
+          }, {
+            fieldName: 'def_val'
+          }, {
+            fieldName: 'search_check'
+          }, {
+            fieldName: 'grid_check'
+          } ]
+        },
+        
+        /**
+         * Grid Columns
+         */
+        gridColumns: {
+          type: Array,
+          value: function() {
+            var colTypes = [ 
+              '', 'binary', 'boolean', 'date', 'datetime', 'decimal', 'double', 
+              'float', 'integer', 'long', 'string', 'text', 'time', 'timestamp' 
+            ];
+
+            return [ { 
+              fieldName: 'id', name: 'id', width: 0 
+            }, { 
+              fieldName: 'menu_id', name: 'menu_id', width: 0 
+            }, { 
+              fieldName: 'rank', name: 'rank', width: 60, type: 'number',
+              header: { 
+                text: Things.DataGlobal.t('label.rank')
+              },
+              styles: { 
+                textAlignment: 'far' 
+              }
+            }, { 
+              fieldName: 'name', name: 'name', width: 135,
+              validations: [
+                { level: "error", expression: "value is not empty", message: "값 '경로'이 빈값이면 안됩니다." }
+              ],
+              header: { 
+                text: Things.DataGlobal.t('label.name')
+              }
+            }, { 
+              fieldName: 'term', name: 'term', width: 150,
+              header: { 
+                text: Things.DataGlobal.t('label.term') + ' (from)'
+              }
+            }, { 
+              fieldName: 'trans', name: 'trans', width: 135,
+              header: { 
+                text: Things.DataGlobal.t('label.term') + ' (to)'
+              },
+              valueType: 'text', type: 'calced',
+              valueCallback: function(column, row) {
+                var term = row.getValue('term');
+                return term ? Things.DataGlobal.t(term) : '';
+              }
+            }, { 
+              name: 'col_type', 
+              fieldName: 'col_type', 
+              width: 100,
+              lookupDisplay: true,
+              validations: [
+                { level: "error", expression: "value is not empty", message: "값 '경로'이 빈값이면 안됩니다." }
+              ],              
+              header: { 
+                text: Things.DataGlobal.t('label.col_type') 
+              },
+              editor: { 
+                type: 'list', 
+                domainOnly: true 
+              },
+              lookupValues: colTypes,
+              lookupLabels: colTypes
+            }, { 
+              fieldName: 'size', name: 'size', width: 65, type: 'number',
+              header: { 
+                text: Things.DataGlobal.t('label.size')
+              },
+              styles: { 
+                textAlignment: 'far' 
+              }
+            }, { 
+              name: 'nullable', 
+              fieldName: 'nullable', 
+              width: 70,
+              editable: false,
+              header: { 
+                text: Things.DataGlobal.t('label.nullable') 
+              },
+              renderer: {
+                type:'check', 
+                editable: true, 
+                threeStates: false, 
+                trueValues: 'true', 
+                falseValues: 'false'
+              }
+            }, { 
+              fieldName: 'uniq_rank', name: 'uniq_rank', width: 80, type: 'number',
+              header: { 
+                text: Things.DataGlobal.t('label.uniq_rank')
+              },
+              styles: { 
+                textAlignment: 'far' 
+              }
+            }, { 
+              name: 'virtual_field', 
+              fieldName: 'virtual_field', 
+              width: 70,
+              editable: false,
+              header: { 
+                text: Things.DataGlobal.t('label.virtual') 
+              },
+              renderer: {
+                type:'check', 
+                editable: true, 
+                threeStates: false, 
+                trueValues: 'true', 
+                falseValues: 'false'
+              }
+            }, { 
+              fieldName: 'search_check', name: 'search_check', width: 115, editable: false,
+              header: { 
+                text: Things.DataGlobal.t('title.search_condition')
+              },
+              renderer: {
+                type:'check', 
+                editable: true, 
+                threeStates: false, 
+                trueValues: 'true', 
+                falseValues: 'false'
+              }
+            }, { 
+              fieldName: 'grid_check', name: 'grid_check', width: 75, editable: false,
+              header: { 
+                text: Things.DataGlobal.t('label.list')
+              },
+              renderer: {
+                type:'check', 
+                editable: true, 
+                threeStates: false, 
+                trueValues: 'true', 
+                falseValues: 'false'
+              }
+            }, { 
+              fieldName: 'sort_rank', name: 'sort_rank', width: 80, type: 'number',
+              header: { 
+                text: Things.DataGlobal.t('label.sort_rank')
+              },
+              styles: { 
+                textAlignment: 'far' 
+              }
+            }, { 
+              fieldName: 'reverse_sort', name: 'reverse_sort', width: 100, editable: false,
+              header: { 
+                text: Things.DataGlobal.t('label.reverse_sort')
+              },
+              renderer: {
+                type:'check', 
+                editable: true, 
+                threeStates: false, 
+                trueValues: 'true', 
+                falseValues: 'false'
+              }            
+            }, { 
+              fieldName: 'ref_type',
+              name: 'ref_type',
+              width: 115,
+              lookupDisplay: true,
+              lookupValues: [ '', 'CommonCode', 'Entity', 'Menu' ],
+              lookupLabels: [ '', 'Code', 'Entity', 'Menu' ],
+              header: { 
+                text: Things.DataGlobal.t('label.ref_type') 
+              },
+              editor: { 
+                type: 'list',
+                domainOnly: true 
+              }
+            }, { 
+              fieldName: 'ref_name', name: 'ref_name', width: 135,
+              header: {
+                text: Things.DataGlobal.t('label.ref_name')
+             }
+            }, {
+                name: 'ref_name_editor',
+                fieldName: 'ref_name_editor',
+                width: 30,
+                editable: false,
+                header: { text: '...' },
+                imageList: 'images',
+                renderer: { type: 'icon' },
+                styles:{
+                  iconIndex: 'menu_button.png',
+                  iconLocation: 'center'
+                },
+                userObj: {
+                  resourceType: 'Entity',
+                  resourceName: 'Menu',
+                  resourceUrl: 'menus',
+                  ownerField: 'ref_name'
+                }
+            }, { 
+              fieldName: 'ref_url', name: 'ref_url', width: 135,
+              header: {
+                text: Things.DataGlobal.t('label.ref_url')
+             }
+            }, { 
+              fieldName: 'ref_params', name: 'ref_params', width: 180,
+              header: {
+                text: Things.DataGlobal.t('label.ref_params')
+             }
+            }, { 
+              fieldName: 'ref_related', name: 'ref_related', width: 180,
+              header: {
+                text: Things.DataGlobal.t('label.ref_related')
+             }
+            }, { 
+              fieldName: 'def_val', name: 'def_val', width: 100,
+              header: {
+                text: Things.DataGlobal.t('label.def_val')
+             }
+            } ];
+          }
+        },
+
+        /**
+         * Grid Column Save URL
+         */
+        gridSaveUrl: {
+          type: String,
+          computed: '_computeColumnSaveUrl(resourceId)'
+        },
+
+        /**
+         * 버튼 정보 
+         */
+        buttons: {
+          type: Array,
+          value: [ {
+            id: 'add-btn',
+            text: 'add',
+            icon: 'icons:add'
+          }, {
+            id: 'save-btn',
+            text: 'save',
+            icon: 'icons:save'
+          }, {
+            id: 'delete-btn',
+            text: 'delete',
+            icon: 'icons:delete'
+          }, {
+            id: 'sync-btn',
+            text: 'sync',
+            icon: 'icons:sync'
+          },{
+            id : 'print-btn',
+            text : 'print',
+            icon: 'icons:print'
+          }  ]
+        }
+      },
+
+      listeners: {
+        'things-detail-view-selected' : '_detailTabSelected',
+        'grid.things-grid-handle-addrow' : '_addRow',
+        'grid.things-grid-handle-save' : '_beforeSearchColumnSave',
+        'grid.things-grid-save-success' : '_reloadGrid',
+        'grid.things-grid-resource-column-edit' : '_onGridColumnRefEdit',
+        'column-ajax.things-ajax-response': '_afterColumnsLoaded',
+        'sync-btn-tap' : '_syncColumns'
+      },
+
+      /**
+       * 상세 탭 선택시 ...
+       */
+      _detailTabSelected: function(e) {
+        this.$.grid.resizeGrid();
+      },   
+
+      /**
+       * MenuMeta 변경시
+       *
+       * @param {Object} resource
+       */
+      _onMenuMetaChanged: function(menuMeta) {
+        var columns = menuMeta.columns;
+        this._sortColumns(columns);
+
+        for(var i = 0 ; i < columns.length ; i++) {
+          var column = columns[i];
+          column.search_check = column.search_rank && column.search_rank > 0;
+          column.grid_check = column.grid_rank && column.grid_rank > 0;
+        }
+
+        this.items = columns;
+      },
+
+      /**
+       * list sorting
+       */
+      _sortColumns: function(list) {
+        list.sort(function(a, b) {
+          if(!a.rank) a.rank = 0;
+          if(!b.rank) b.rank = 0;
+          return (a.rank > b.rank) ? 1 : ((b.rank > a.rank) ? -1 : 0);
+        });
+      },
+
+      /**
+       * Grid Column Save URL
+       *
+       * @param {String} resourceId
+       * @return {String} Grid Column Save URL
+       */
+      _computeColumnSaveUrl: function(resourceId) {
+        return 'menus/' + resourceId + '/menu_columns/update_multiple';
+      },
+
+      /**
+       * Sync Columns
+       *
+       * @param {Object} e 버튼 클릭 이벤트
+       */
+      _syncColumns: function(e) {
+        this.$['columns-sync-ajax'].generateRequest();
+      },
+
+      /**
+       * Add Grid Row
+       */
+      _addRow: function(e) {
+        e.preventDefault();
+        var dataSet = this.$.grid.dataSet;
+        var count = dataSet._values.length + 1;
+        dataSet.insertRow(count - 1, { menu_id : this.resourceId, rank : count * 10, col_type : 'string' });
+      },      
+
+      /**
+       * Grid Column 저장 전
+       *
+       * @param {Object} event menu-meta 저장 전 이벤트 
+       */
+      _beforeSearchColumnSave: function(event) {
+        var grid = event.target;
+        if(grid.writeData && grid.writeData.length > 0) {
+          var menuId = this.resourceId;
+          grid.writeData.forEach(function(changedData) {
+            changedData.menu_id = menuId;
+            if(!changedData.uniq_rank) changedData.uniq_rank = 0;
+
+            if(!changedData.search_check || 'false' === changedData.search_check) {
+              changedData.search_rank = 0;
+            } else {
+              if(!changedData.search_rank || changedData.search_rank <= 0)
+                changedData.search_rank = changedData.rank;
+            }
+
+            if(!changedData.grid_check || 'false' === changedData.grid_check) {
+              changedData.grid_rank = 0;
+            } else {
+              if(!changedData.grid_rank || changedData.grid_rank <= 0)
+                changedData.grid_rank = changedData.rank;
+            }
+
+            delete changedData['ref_name_editor'];
+            delete changedData['trans'];
+            delete changedData['search_check'];
+            delete changedData['grid_check'];
+          });
+        }
+      },
+
+      /**
+       * Reload Grid Data
+       */
+      _reloadGrid: function(e) {
+       this.$['column-ajax'].generateRequest();
+      },
+
+      /**
+       * Menu Meta Data 조회 후 
+       *
+       * @param {Object} event 
+       */
+      _afterColumnsLoaded: function(event) {
+        this.menuMeta = event.detail;
+      },    
+
+      /**
+       * Entity Ref Column Edit
+       *
+       * @param {Object} things-grid-resource-column-edit 이벤트 
+       */
+      _onGridColumnRefEdit: function(e) {
+        e.preventDefault();
+        var index = e.detail.index;
+        var grid = index._grid;
+        var dataSet = this.$.grid.getGridDataSet();
+        var row = dataSet.getRowObject(index.rowIndex);
+        if(!row.ref_type) return;
+        
+        if(!row.ref_name) {
+          row.ref_name = '';
+          dataSet.updateRow(index.rowIndex, row);
+        }
+
+        var resourceObj = { 
+          // TODO valueField가 한 개 이상일 필요가 있다.
+          resourceType : 'Entity',
+          resourceName : row.ref_type,
+          ownerField : 'ref_name'          
+        };
+
+        this.openResourceSelectorByGrid(index._grid, index.rowIndex, resourceObj, true);
+      }
+
+    });
+  </script>
+</dom-module>

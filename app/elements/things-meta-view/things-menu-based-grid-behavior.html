@@ -1,0 +1,105 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../bower_components/things-global-behavior/things-global-behavior.html">
+<link rel="import" href="../../bower_components/things-meta/things-menu-meta-behavior.html">
+<link rel="import" href="../../bower_components/things-msg-box-behavior/things-msg-box-behavior.html">
+<link rel="import" href="../../bower_components/things-view-open-behavior/things-view-open-behavior.html">
+
+<link rel="import" href="./things-menu-based-grid-meta-behavior.html">
+
+<script>
+
+window.Things = window.Things || {};
+
+/**
+ * 리소스 타입 메뉴 기반 그리드 화면 Behavior
+ *
+ * @polymerBehavior Things.MenuBasedGridBehavior
+ */
+Things.MenuBasedGridBehaviorImpl = {
+
+	properties: {
+		/**
+		 * 조회 결과 
+		 */
+		menuInfo: {
+			type: Object,
+			observer: '_menuInfoChanged'
+		},
+
+		/**
+		 * 조회 결과 리스트 데이터
+		 */
+		items: {
+			type: Array
+		},
+
+		/**
+		 * 조회 결과 레코드 수  
+		 */
+		itemCount: {
+			type: Number
+		},
+
+		/**
+		 * Detail 버튼을 활성화 시킬 지 여부
+		 */
+		enableDetailColumn: {
+			type: Boolean,
+			value: false
+		},
+
+		/**
+		 * 그리드 Height
+		 * -1이면 layout flex가 적용되고 -1이 아니면 설정된 gridHeight가 적용됨 
+		 */
+		gridHeight: {
+			type: Number,
+			notify: true,
+			value: -1
+		}
+	},
+
+	/**
+	 * Resource Grid를 리턴한다.
+	 */
+	getResourceGrid: function() {
+		return this.$.grid;
+	},
+
+	/**
+	 * ID Field를 리턴한다.
+	 */
+	getIdField: function() {
+		return (this.menuInfo && this.menuInfo.id_field) ? this.menuInfo.id_field : 'id';
+	},
+
+	/**
+	 * Title Field를 리턴한다.
+	 */
+	getTitleField: function() {
+		return (this.menuInfo && this.menuInfo.title_field) ? this.menuInfo.title_field : 'name';
+	},
+
+	/**
+	 * 메뉴 메타데이터 변경시
+   *
+	 * @param {Object} menuInfo
+	 */
+	_menuInfoChanged: function(menuInfo) {
+		if(menuInfo) {
+			this.menuId = menuInfo.id;
+		}
+	}
+
+};
+
+Things.MenuBasedGridBehavior = [
+	Things.MenuBasedGridBehaviorImpl,
+	Things.MenuBasedGridMetaBehavior,
+	Things.ViewOpenBehavior,
+	Things.MsgBoxBehavior,
+	Things.GlobalBehavior
+];
+
+</script>

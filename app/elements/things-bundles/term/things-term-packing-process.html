@@ -1,0 +1,330 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+
+<link rel="import" href="../../things-layout-view/things-layout-mercury.html">
+<link rel="import" href="../../things-label-print/things-print-agent.html">
+<link rel="import" href="../../things-meta-view/things-diy-based-grid.html">
+<link rel="import" href="../../things-meta-view/things-diy-based-form.html">
+
+<link rel="import" href="things-term-common-grid.html">
+<link rel="import" href="things-lot-based-transaction-behavior.html">
+
+<!--
+  OI - Packing Order Transaction 시작 페이지
+-->
+
+<dom-module id="things-term-packing-process">
+  <template>
+    <style>
+      :host {
+        display: block;
+        @apply(--layout-vertical);
+        @apply(--layout-flex);
+      }
+      things-layout-mercury {
+        @apply(--layout-flex);
+      }
+    </style>
+
+    <things-ajax
+      id="validate-lot"
+      resource-action="create"
+      resource-url="lot_trxs/VALIDATE/transaction"
+      last-response="{{lot}}">
+    </things-ajax>
+
+    <things-ajax
+      id="transaction"
+      resource-action="create"
+      resource-url="[[transactionUrl]]">
+    </things-ajax>
+
+    <things-ajax id="label-model" resource-action="find"></things-ajax>
+
+    <things-layout-mercury 
+      left-top-content-title="[[packSearchTitle]]" 
+      left-bottom-content-title="[[packInforTitle]]" 
+      right-content-title="[[packListTitle]]">
+      <things-diy-based-form 
+        left-top
+        on-keypress="handleKeyPress"
+        id="lot-info-form"
+        diy-form-name="OI-NameField"
+        buttons="[[buttons]]">
+      </things-diy-based-form>
+      
+      <things-diy-based-grid 
+        left-bottom
+        id="packing-list-grid"
+        class="flex"
+        items="[[packingList]]"
+        fixed-column-count="1"
+        diy-grid-name="OI-PackingList">
+      </things-diy-based-grid>
+
+      <things-term-common-grid
+        right
+        id="latest-lot-grid"
+        class="flex"
+        query-fields="[[latestLotQueryFields]]">
+      </things-term-common-grid>
+    </things-layout-mercury>
+  </template>
+
+  <script>
+    Polymer({
+      is: 'things-term-packing-process',
+      
+      behaviors: [
+        Things.LotBasedTransactionBehavior
+      ],
+
+      properties: {
+        /**
+         * Title Of Lot Information
+         */
+        packSearchTitle: {
+          type: String,
+          value: function() {
+            return Things.DataGlobal.t('label.pack_no')
+          }
+        },
+
+        /**
+         * Title Of Input
+         */
+        packInforTitle: {
+          type: String,
+          value: function() {
+            return Things.DataGlobal.t('label.packing_lots')
+          }
+        },
+
+        /**
+         * Title Of Lot List
+         */
+        packListTitle: {
+          type: String,
+          value: function() {
+            return Things.DataGlobal.t('label.pack_list')
+          }
+        },
+
+        /**
+         * packing 할 packing lot 목록
+         * 그리드에 맵핑할 property
+         */
+        packingList: {
+          type: Array,
+          value: []
+        },
+
+        /**
+         * packing model에서 추출한 packing 단위 
+         * (한 pack에 들어갈 lot 혹은 packing lot 갯수)
+         */
+        packQty: {
+          type: Number,
+          value: 5 // 서버에서 받아서 초기화 해야 합니다. 현재는 5로 하드 코딩
+        },
+
+        /**
+         * Packing 트랜잭션 후 결과 Packing Lot
+         */
+        packingLot: {
+          type: Object
+        }
+      },
+
+      observers: [
+        'lotListConditionsChanged(orderId,operationId)'
+      ],
+
+      listeners: {
+        'process-btn-tap' : 'lotTransaction',
+        'transaction.things-ajax-response' : 'transactionResponsed',
+        'things-grid-configured' : 'latestLotGridConfigured',
+        'label-model.things-ajax-response' : '_labelModelResponsed'
+      },
+
+      /**
+       * Life Cycle - Ready
+       */
+      ready: function() {
+        this.transaction = 'PACKING';
+      },
+
+      /**
+       * Latest Lot List 검색 조건 변경시 
+       *
+       * @param {String} orderId
+       * @param {String} operationId
+       */
+      lotListConditionsChanged: function(orderId, operationId) {
+        this.latestLotQueryFields = [{
+          name: 'work_order_id',
+          value: orderId
+        }, {
+          name: 'operation_id',
+          value: operationId
+        }, {
+          name: 'lot_type',
+          value: 'PACK'
+        }, {
+          name: 'state',
+          value: 'WAIT_PACK'
+        }];
+
+        this.refreshLatestLots();
+      },
+
+      /**
+       * Latest Lot Grid 변경시
+       */
+      latestLotGridConfigured: function(event) {
+        this.refreshLatestLots();
+      },
+
+      /**
+       * Form List를 리턴 
+       */
+      getForms: function() {
+        return [this.getLotInfoForm()];
+      },
+
+      /**
+       * Lot Information Form
+       */
+      getLotInfoForm: function() {
+        return this.$['lot-info-form'];
+      },
+
+      /**
+       * Latest Lot List Grid
+       */
+      getLatestLotGrid: function() {
+        return this.$['latest-lot-grid'];
+      },
+
+      /**
+       * Validation Lot Service
+       */
+      getValidateLotService: function() {
+        return this.$['validate-lot'];
+      },
+
+      /**
+       * Transaction Lot Service
+       */
+      getTransactionLotService: function() {
+        return this.$['transaction'];
+      },
+
+      /**
+       * Get Lot No.
+       */
+      getLotNo: function() {
+        var inputData = this.getLotInfoForm().getForm().serializeMyForm();
+        return inputData.name;
+      },
+
+      /**
+       * Lot Transaction
+       */
+      lotTransaction: function() {
+        var inputData = this.getLotInfoForm().getForm().serializeMyForm();
+        var tranAjax = this.getTransactionLotService();
+        var lotIds = this.packingList.map(function(item) { return item.id });
+
+        tranAjax.body = {
+          lot_ids : lotIds,
+          work_order_id : this.orderId,
+          current_operation_id : this.operationId,
+          comments: inputData.comments
+        };
+
+        tranAjax.generateRequest();
+      },
+
+      /**
+       * 트랜잭션 성공시 
+       *
+       * @param {Object} event
+       */
+      transactionResponsed: function(event) {
+        if(!this.checkTransactionResponse(event)) {
+          return;
+        }
+                
+        this.packingLot = event.detail;
+        this.resetForm();
+        this.refreshLatestLots();
+        this.fire('iron-signal', {name : 'refresh-wip'});
+
+        // TODO Check, Get Label Model
+        if(this.$['print'].value == true) {
+          this.$['label-model'].resourceUrl = 'lots/' + this.lot.id + '/packing_label/' + this.operationId;
+          this.$['label-model'].generateRequest();
+        }        
+      },
+
+      /**
+       * Reset Form 
+       *
+       * @param {Object} event
+       */
+      resetForm: function(event) {
+        this.packingList = [];
+        var forms = this.getForms();
+        forms.forEach(function(form) { form.getForm().resetMyForm(); }); 
+      },
+
+      /**
+       * things-lot-based-transaction-behavior override
+       *
+       * lot id 검색 후 중복되지 않은 lot정보를 grid에 입력합니다.
+       * packQty와 비교하여 packQty를 이상이 되면 자동으로 transaction 실행
+       */
+      lotChanged: function(lot) {
+        // TODO : packingModel에서 packQty 받아서 입력 하기
+        if(this.packingList.length < this.packQty) {
+          var packingList = this.packingList;
+          
+          for(var i = 0; i < packingList.length; i++) { 
+            if(packingList[i].name == lot.name) return;
+          }
+
+          packingList.push(lot);
+          this.packingList = [];
+          this.packingList = packingList;
+          this.getLotInfoForm().getForm().resetMyForm();
+        }
+
+        if(this.packingList.length >= this.packQty) {
+          this.lotTransaction();
+        }
+      },
+
+      /**
+       * labelModel 조회 후
+       *
+       * @param {Object} event
+       */
+      _labelModelResponsed: function(event) {
+        var label = event.detail;
+        var variableData = {
+          '#box_no' : this.packingLot.name,
+          '#material_name' : this.packingLot.material.name,
+          '#date' : this.packingLot.work_date,
+          '#qty' : '' + this.packingLot.good_qty
+        };
+
+        var agent = this.$['print-agent'];
+        agent.label = label;
+        agent.convertData = variableData;
+        agent.printLabel();
+      }
+    });
+  </script>
+</dom-module>

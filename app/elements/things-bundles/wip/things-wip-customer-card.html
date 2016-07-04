@@ -1,0 +1,388 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../../bower_components/iron-scroll-threshold/iron-scroll-threshold.html">
+<link rel="import" href="../../../bower_components/things-card-image/things-card-image-list.html">
+<link rel="import" href="../../../bower_components/things-button/things-button-bar.html">
+<link rel="import" href="../../things-content/things-resource-menu-content-behavior.html">
+
+<dom-module id="things-wip-customer-card">
+  <template>
+    <style>
+      :host {
+        display: block;
+        background-color:var(--things-whitegrey-background-color);
+      }
+      paper-toolbar{
+        background-color:var(--things-primary-background-color);
+        height:45px;
+        margin-top:0px !important;
+        @apply(--things-padding-clear)
+      }
+      paper-toolbar::shadow #topBar{
+        height:45px;
+        padding:0;
+      }
+      paper-toolbar::shadow #bottomBar {
+        height: 45px;
+        @apply(--layout-horizontal);
+        @apply(--layout-end-justified);
+        padding: 0 10px;
+      }      
+      paper-toolbar .title{
+        margin-left:32px !important;
+        line-height:initial !important;
+      }
+      .detail-card {
+        @apply(--layout-vertical);
+        min-width:350px;
+        max-width:500px;
+      }
+      .detail-content {
+        @apply(--layout-vertical);
+      }
+      .detail-content:first-child {
+        @apply(--layout-horizontal);
+      }
+      .detail-content:last-child::shadow input{
+        width:68%;
+      }
+      .close-btn{
+        @apply(--things-header-button);
+        background:url(/images/icon-close.png) 100% 50% no-repeat;
+        margin-right:10px;
+      }
+      .container{
+        height: 90vh;
+        overflow: auto;
+      }
+      #card-list::shadow paper-card{
+        padding:6px 4px;
+        min-height:85px
+      }
+      #card-list::shadow iron-image{
+        width:65px;
+        height:50px;
+      }
+      #card-list::shadow iron-image::shadow img{
+        height:initial !important;
+      }
+      #card-list::shadow .title-text,#card-list::shadow .card-info{
+        display:none;
+      }
+      #card-list::shadow .header{
+        float:left;
+        margin-right:7px;
+      }
+      #card-list::shadow #card-detail span{
+        display:block;
+        overflow-x:hidden;
+        font-size:12px;
+        color:var(--things-primary-text-color);
+        white-space:nowrap;
+      }
+      #card-list::shadow #card-detail span.name{
+        padding:2px 0;
+        font-size:13px;
+        font-weight:bold;
+        color:var(--things-focus-background-color);
+      }
+      #card-list::shadow #card-detail span.homepage{
+        margin-top:4px;
+        padding:1px 0 0 2px;
+        border-top:1px dotted #ddd;
+      }
+      #card-list::shadow #card-detail span:before{
+        content:"";
+        display:inline-block;
+        position:relative;
+        top:2px;
+        width:12px;height:13px;
+        margin-right:3px;
+        background-image:url(/images/icon-tiny.png);
+      }
+      #card-list::shadow #card-detail span.name:before{
+        display:none;
+      }
+      #card-list::shadow #card-detail span.phone:before{
+        background-position:50% 0;
+      }
+      #card-list::shadow #card-detail span.email:before{
+        background-position:50% -47px;
+      }
+      #card-list::shadow #card-detail span.homepage:before{
+        background-position:50% -99px;
+      }
+      .detail-card iron-image{
+        float:left;
+        min-width:150px;
+        min-height:50px;
+        max-width:200px;
+        max-height:100px;
+      }
+      .detail-card iron-image::shadow img{
+        margin:auto;
+        max-width:100%
+      }
+      .topinfo{float:right;}
+      paper-dialog paper-toolbar:last-child{
+        background-color:transparent;
+        margin-bottom:5px;
+      }
+    </style>
+
+    <things-ajax 
+      auto
+      id="resource-meta"
+      method="GET"
+      resource-url="[[menuMetaUrl]]"
+      last-response="{{metaData}}">
+    </things-ajax>
+
+    <things-ajax
+      id="save-request"
+      resource-action="update"
+      resource-url="[[saveUrl]]"
+      resource-id="[[singleItemId]]">
+    </things-ajax>
+
+    <things-search-form 
+      id="search-form"
+      title="[[menuInfo.title]]"
+      form-fields="[[searchFormFields]]" 
+      action-url="[[menuInfo.resource_url]]" 
+      page="{{page}}"
+      per-page="[[perPage]]"
+      last-response="{{lastResponse}}">
+    </things-search-form>
+
+    <div id="card-list" class="container">
+      <things-card-image-list
+        items="[[lastResponse.items]]"
+        detail-fields="name,description,phone,email,homepage"
+        is-selector>
+      </things-card-image-list>
+    </div>
+
+    <paper-toolbar>
+      <div class="bottom">
+        <things-button-bar id="button-bar" buttons="[[buttons]]"></things-button-bar>
+      </div>
+    </paper-toolbar>
+
+    <paper-dialog
+      id="dialog"
+      entry-animation="scale-up-animation"
+      exit-animation="fade-out-animation"
+      modal>
+      <paper-toolbar>
+        <span class="title">[[singleItem.name]]</span>
+        <div class="buttonsGroup">
+          <button class="close-btn" on-tap="closeDialog"></button>
+        </div>
+      </paper-toolbar>
+      <div class="detail-card">
+        <div class="detail-content">
+          <iron-image src="[[imageSrc]]"></iron-image>
+          <div class="topinfo">
+            <things-input-field label="Name" value="{{singleItem.name}}"></things-input-field>
+            <things-input-field label="CEO" value="{{singleItem.ceo}}"></things-input-field>
+            <things-input-field label="Phone" value="{{singleItem.phone}}"></things-input-field>
+          </div>
+        </div>
+        <div class="detail-content">
+          <things-input-field label="E-Mail" value="{{singleItem.email}}"></things-input-field>
+          <things-input-field label="Homepage" value="{{singleItem.homepage}}"></things-input-field>
+          <things-input-field label="Address" value="{{singleItem.addr}}"></things-input-field>
+          <things-input-field label="Detail Address" value="{{singleItem.detail_addr}}"></things-input-field>
+          <things-input-field label="ZIP Code" value="{{singleItem.zip_code}}"></things-input-field>
+          <!--things-input-field label="Image" value="{{singleItem.attachment.name}}"></things-input-field-->
+          <things-input-field label="Updator" value="{{singleItem.updater.name}}" disabled></things-input-field>
+          <things-input-field label="Updated At" value="{{singleItem.updated_at}}" disabled></things-input-field>
+        </div>
+      </div>
+
+      <paper-toolbar>
+        <div class="bottom">
+          <things-button-bar id="detail-button-bar" buttons="[[detailButtons]]"></things-button-bar>
+        </div>
+      </paper-toolbar>
+    </paper-dialog>
+
+    <iron-scroll-threshold
+      id="scroller"
+      scroll-target="card-list"
+      on-lower-threshold="goNextPage">
+    </iron-scroll-threshold>    
+  </template>
+
+  <script>
+    Polymer({
+      is: 'things-wip-customer-card',
+
+      behaviors: [
+        Things.ResourceMenuContentBehavior
+      ],
+
+      properties: {
+        
+        /**
+         * list에서 선택된 개별 item
+         */
+        singleItem: {
+          type: Object,
+        },
+
+        /**
+         * list에서 선택된 개별 item의 id
+         */
+        singleItemId: {
+          type: String
+        },
+
+        /**
+         * 개별 이미지의 source url
+         */
+        imageSrc: {
+          type: String
+        },
+
+        /**
+         * resource url
+         */
+        resourceUrl: {
+          type: String
+        },
+
+        /**
+         * save url
+         */
+        saveUrl: {
+          type: String,
+          computed: '_computeSaveUrl(resourceUrl)'
+        },
+
+        /**
+         * search-form을 통해 구한 response
+         */
+        lastResponse: {
+          type: Object,
+          observer: '_responseChanged'
+        },
+
+        /**
+         * 총 페이지 수
+         */
+        totalCount: {
+          type: Number,
+          value: 0
+        },        
+
+        /**
+         * 현재 페이지
+         */
+        page: {
+          type: Number,
+          value: 1
+        },        
+
+        /**
+         * 한 페이지 당 보여질 레코드 수 
+         */
+        perPage: {
+          type: Number,
+          value: 100
+        },
+
+        /**
+         * 상세 화면 버튼 종류
+         */
+        detailButtons: {
+          type: Array,
+          value: function() {
+            return [ {
+              id: 'save-btn',
+              text: 'save'
+            } ];
+          }
+        }
+      },
+
+      listeners: {
+        'things-card-image-selected' : '_onImageSelected',
+        'button-bar.save-btn-tap': '_saveButtonTapped',
+        'scroller.lower-threshold': 'goNextPage'
+      },
+
+      /**
+       * search-form request
+       */
+      attached: function() {
+        this.$['search-form'].submitMyForm();
+      },      
+
+      /**
+       * search 결과 totalCount를 초기화 하기 위한 function
+       */
+      _responseChanged: function(lastResponse) {
+        this.totalCount = lastResponse.total;
+      },
+
+      /**
+       * 개별 item이 클릭 되었을때 해당 item의 detail 정보를 초기화 하고 dialog를  toggle
+       */
+      _onImageSelected: function(e) {
+        this.resourceUrl = this.metaData.menu.resource_url;
+        this.singleItem = e.detail;
+        this.singleItemId = e.detail.attachment_id;
+        this.getSingleImageSrc(this.singleItemId);
+        this.$['dialog'].toggle();
+      },
+
+      /**
+       * resource url과 resourc_id를 통해 save url을 계산
+       */
+      _computeSaveUrl: function(resourceUrl) {
+        return resourceUrl + '/:id';
+      },
+
+      /**
+       * 개별 item을 클릭하면 id를 통해 해당 아이템의 imageSrc를 구한다.
+       */
+      getSingleImageSrc: function(id) {
+        var baseUrl = this.get('globals.baseUrl');
+        this.imageSrc = baseUrl + '/download/' + id;
+      },
+
+      /**
+       * save 버튼이 클릭 되었을때 변경사항을 저장하기 위한 ajax 호출
+       */
+      _saveButtonTapped: function() {
+        this.$['save-request'].body = this.singleItem;
+        this.$['save-request'].generateRequest();
+        this.closeDialog();
+      },
+
+      /**
+       * dialog를 닫는 function
+       */
+      closeDialog: function() {
+        this.$['dialog'].toggle();
+      },
+
+      /**
+       * 다음 페이지 이동
+       */
+      goNextPage: function() {
+        if(this.totalCount == 0) {
+          this.$.scroller.clearTriggers();
+          return;
+        }
+
+        if((this.page * this.perPage) < this.totalCount) {
+          this.perPage += this.perPage;
+          this.$['search-form'].submitMyForm();
+        }
+        this.$.scroller.clearTriggers();        
+      }
+    });
+  </script>
+</dom-module>

@@ -1,0 +1,88 @@
+<link rel="import" href="things-wip-routing-detail-scrollable.html">
+<link rel="import" href="../../../bower_components/things-detail/things-resource-detail-tab-view-behavior.html">
+<dom-module id="things-wip-routing-detail">
+    <template>
+        <style>
+        #scrollable-element{
+          overflow-x:hidden
+        }
+        </style>
+        <things-ajax auto id="wip-search" method="GET" resource-url="[[searchUrl]]" resource-id="[[resourceId]]" last-response="{{lastResponse}}">
+        </things-ajax>
+        <div class="container">
+            <!-- <paper-icon-button icon="arrow-back" on-tap="moveLeft"></paper-icon-button> -->
+            <div id="scrollable-element" class="container">
+                <things-wip-routing-detail-scrollable id="scrollable" scroll-target="scrollable-element" show-info="[[showInfo]]"></things-wip-routing-detail-scrollable>
+            </div>
+            <!-- <paper-icon-button icon="icons:arrow-forward" on-tap="moveRight"></paper-icon-button> -->
+        </div>
+    </template>
+    <script>
+    Polymer({
+        is: 'things-wip-routing-detail',
+
+        behaviors: [
+            Things.ResourceDetailTabViewBahavior,
+            Polymer.IronScrollTargetBehavior
+        ],
+
+        properties: {
+
+            /**
+             * resourcd id
+             */
+            resourceId: {
+                type: String
+            },
+
+            /**
+             * search url
+             */
+            searchUrl: {
+                type: String
+            },
+
+            /**
+             * things ajax response
+             */
+            lastResponse: {
+                type: Object,
+                observer: '_itemsChanged'
+            },
+
+            /**
+             * information을 보여줄지 여부를 결정 합니다.
+             */
+            showInfo: {
+                type: Boolean,
+                value: false
+            }
+        },
+
+        /**
+         * request를 통해 얻은 items를 things-wip-routing-detail-scrollable로 넘겨준다.
+         */
+        _itemsChanged: function(items) {
+            this.$.scrollable.items = items;
+        },
+
+        /**
+         * things-wip-routing-detail-scrollable 파일의 moveLeft를 호출하여 스크롤을 이동
+         */
+        moveLeft: function() {
+            this.$.scrollable.moveLeft();
+        },
+
+        /**
+         * things-wip-routing-detail-scrollable 파일의 moveLeft를 호출하여 스크롤을 이동
+         */
+        moveRight: function() {
+            this.$.scrollable.moveRight();
+        },
+
+        refresh: function() {
+            this.$['wip-search'].generateRequest();
+        }
+    });
+    </script>
+</dom-module>

@@ -1,0 +1,326 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../../bower_components/paper-icon-button/paper-icon-button.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../../bower_components/things-grid/things-resource-grid.html">
+<link rel="import" href="../../../bower_components/things-msg-box-behavior/things-msg-box-behavior.html">
+<link rel="import" href="../../../bower_components/things-resource-selector/things-resource-selector-behavior.html">
+<link rel="import" href="../../../bower_components/things-view-open-behavior/things-view-open-behavior.html">
+
+<link rel="import" href="../../things-meta-view/things-menu-based-grid.html">
+
+<dom-module id="things-base-view-columns-grid">
+  <template>
+    <style>
+      :host {
+        display: block;
+        @apply(--layout-vertical);
+      }
+      iron-pages {
+        @apply(--layout-flex);
+        @apply(--layout-vertical);
+      }
+      things-resource-grid {
+        @apply(--layout-flex);
+      }
+    </style>
+    
+    <things-ajax 
+      id="sync-service" 
+      method="POST"
+      content-type="application/json"
+      resource-url = "[[syncColumnsUrl]]"
+      last-response="{{items}}">
+    </things-ajax>
+
+    <things-ajax 
+      id="columns-ajax" 
+      method="GET"
+      content-type="application/json"
+      resource-url = "[[searchColumnsUrl]]"
+      last-response="{{items}}">
+    </things-ajax>
+
+    <things-menu-based-grid 
+      id="view-columns-grid"
+      menu-name="ViewColumn"
+      buttons="[[buttons]]"
+      items="[[items]]"
+      item-total="[[itemTotal]]">
+    </things-menu-based-grid>
+  </template>
+
+  <script>
+    Polymer({
+
+      is: 'things-base-view-columns-grid',
+
+      behaviors: [
+        Things.ResourceSelectorBehavior,
+        Things.MsgBoxBehavior,
+        Things.ViewOpenBehavior
+      ],
+
+      properties: {
+        /**
+         * 동기화 할 Source Entity 명 
+         */
+        srcResourceName: {
+          type: String
+        },
+
+        /**
+         * Entity 
+         */
+        resourceName: {
+          type: String
+        },
+
+        /**
+         * Resource ID
+         */
+        resourceId: {
+          type: String
+        },
+
+        /**
+         * Search Columns URL
+         */
+        searchColumnsUrl: {
+          type: String,
+          computed: '_computeSearchColumnsUrl(resourceName,resourceId)'
+        },
+
+        /**
+         * Entity와 컬럼 동기화를 위한 URL
+         */
+        syncColumnsUrl: {
+          type: String,
+          computed: '_computeSyncColumnsUrl(srcResourceName,resourceName,resourceId)'
+        },
+
+        /**
+         * 조회 결과 리스트 데이터
+         */
+        items: {
+          type: Array
+        },
+
+        /**
+         * 조회 결과 레코드 수  
+         */
+        itemCount: {
+          type: Number
+        },
+
+        /**
+         * 표시에서 제외할 필드 리스
+         */
+        ignoreDisplayFields: {
+          type: String,
+          value: ''
+        },
+
+        /**
+         * 버튼 정보 
+         */
+        buttons: {
+          type: Array,
+          value: [ {
+            id: 'sync-btn',
+            text: 'sync'
+          }, {
+            id: 'check-columns-btn',
+            text: 'check-columns'
+          }, {
+            id: 'add-btn',
+            text: 'add'
+          }, {
+            id: 'save-btn',
+            text: 'save'
+          }, {
+            id: 'delete-btn',
+            text: 'delete'
+          } ]
+        }
+      },
+
+
+      listeners: {
+        'sync-btn-tap' : '_syncWithSourceEntity',
+        'check-columns-btn-tap' : 'checkColumns',
+        'view-columns-grid.things-view-columns-grid-meta-changed' : '_gridMetaColumnsChanged',
+        'view-columns-grid.things-grid-configured' : '_gridConfigured',
+        'view-columns-grid.things-grid-handle-addrow' : '_addRow',
+        'view-columns-grid.things-grid-handle-built-writedata' : '_setupWriteData',
+        'view-columns-grid.things-grid-resource-column-edit' : '_onGridColumnRefEdit',
+        'view-columns-grid.things-grid-save-success' : '_refreshGrid'
+      },
+
+      /**
+       * 그리드 구성 완료 후
+       *
+       * @param {Object} event
+       */
+      _gridConfigured: function(event) {
+        this._refreshGrid();
+      },
+
+      /**
+       * View Columns Grid를 구성하기 위한 그리드 메타 컬럼이 변경되었을 경우
+       *
+       * @param {Object} event
+       */
+      _gridMetaColumnsChanged: function(event) {
+        var metaColumns = event.detail;
+        if(this.ignoreDisplayFields && this.ignoreDisplayFields.length > 2) {
+          var ignoreArr = this.ignoreDisplayFields.split(',');
+          metaColumns.forEach(function(column) {
+            if(ignoreArr.includes(column.name)) {
+              column.width = 0;
+            }
+          });          
+        }
+      },
+
+      /**
+       * resourceName, resourceId로 Entity Column과 조회 URL 생성
+       *
+       * @param {String} resourceName 조회 할  엔티티 명
+       * @param {String} resourceId 조회 할 리소스 아이디
+       * @return {String} 리소스 컬럼 조회 URL
+       */
+      _computeSearchColumnsUrl: function(resourceName, resourceId) {
+        return 'view_columns/' + resourceName + '/' + resourceId;
+      },
+
+      /**
+       * resourceName, resourceId로 Entity Column과 동기화 URL 생성
+       *
+       * @param {String} srcResourceName 동기화 할 소스 엔티티 명 
+       * @param {String} resourceName 동기화 할 타겟 엔티티 명
+       * @param {String} resourceId 동기화 할 타겟 리소스 아이디
+       * @return {String} Entity Column과 동기화 URL
+       */
+      _computeSyncColumnsUrl: function(srcResourceName, resourceName, resourceId) {
+        return 'view_columns/' + resourceName + '/' + resourceId + '/sync_with_entity_columns/' + srcResourceName;
+      },
+
+      /**
+       * Refresh Grid
+       */
+      _refreshGrid: function() {
+        this.$['columns-ajax'].generateRequest();
+      },
+
+      /**
+       * Synchronize With Entity Table
+       *
+       * @param {Object} e 버튼 클릭 이벤트 
+       */
+      _syncWithSourceEntity: function(e) {
+        if(this.srcResourceName) {
+          this.$['sync-service'].generateRequest();  
+        } else {
+          this.openInfoMsg({
+            type : 'warning',
+            title : 'Entity should not be empty! Please set Entity if you want to synchroize columns with entity.',
+            showCancelButton: true,
+            closeOnConfirm : true
+          });
+        }
+      },
+
+      /**
+       * 컬럼의 Rank를 재조정한다.
+       *
+       * @param {Object} e 버튼 클릭 이벤트 
+       */
+      checkColumns: function(e) {
+        var dataSet = this.$['view-columns-grid'].getGrid().getGridDataSet();
+        var dataCount = dataSet._values.length;
+        var ignoreFieldsWhenSave = ['domain_id', 'creator_id', 'updater_id', 'created_at', 'updated_at'];
+
+        for (var i = 0; i < dataCount; i++) {
+          var row = dataSet.getRowObject(i);
+          row.rank = (i + 1) * 10;
+          if(row.name && !row.term) row.term = 'label.' + row.name;          
+          dataSet.updateRow(i, row);
+        }
+      },
+
+      /**
+       * Add Grid Row
+       */
+      _addRow: function(e) {
+        e.preventDefault();
+
+        var dataSet = e.srcElement.dataSet;
+        if(dataSet) {
+          var count = dataSet._values.length + 1;
+          dataSet.insertRow(count - 1, {
+            on_id : this.resourceId,
+            on_type : this.resourceName,
+            rank : count * 10,
+            col_type : 'string',
+            nullable : true
+          });
+        }
+      },
+
+      /**
+       * Grid에서 업데이트할 writeData 셋업이 완료된 후 writeData 조작
+       *
+       * @param {Object} event
+       */
+      _setupWriteData: function(event) {
+        var writeData = event.detail;
+        if(writeData && writeData.length > 0) {
+          var entityId = this.resourceId;
+
+          writeData.forEach(function(changedData) {
+            changedData.entity_id = entityId;
+            if(!changedData.uniq_rank) changedData.uniq_rank = 0;
+            changedData.grid_rank = changedData.rank;
+            delete changedData['ref_name_editor'];
+            delete changedData['trans'];
+            delete changedData['search_check'];
+            delete changedData['grid_check'];
+          });
+        }
+      },
+
+      /**
+       * Entity Ref Column Edit
+       *
+       * @param {Object} things-grid-resource-column-edit 이벤트 
+       */
+      _onGridColumnRefEdit: function(e) {
+        e.preventDefault();
+        var index = e.detail.index;
+        var grid = index._grid;
+        var dataSet = this.$.grid.getGridDataSet();
+        var row = dataSet.getRowObject(index.rowIndex);
+        if(!row.ref_type) return;
+        
+        if(!row.ref_name) {
+          row.ref_name = '';
+          dataSet.updateRow(index.rowIndex, row);
+        }
+
+        var resourceObj = { 
+          resourceType : 'Entity',
+          resourceName : row.ref_type,
+          ownerField : 'ref_name'
+        };
+
+        if(row.ref_type == 'Menu') {
+          resourceObj.initialParams = 'menu_type=SCREEN,routing_type=RESOURCE';
+        }
+
+        this.openResourceSelectorByGrid(index._grid, index.rowIndex, resourceObj, true);
+      }
+
+    });
+  </script>
+</dom-module>

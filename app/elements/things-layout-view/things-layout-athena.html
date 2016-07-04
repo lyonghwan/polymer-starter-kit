@@ -1,0 +1,157 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../bower_components/paper-card/paper-card.html">
+
+<link rel="import" href="./things-layout-behavior.html">
+
+<!--
+  좌우 분할, 우측 상하 분할 레이아웃
+-->
+
+<dom-module id="things-layout-athena">
+  <template>
+    <style>
+      :host {
+        display: inline-block;
+        @apply(--things-layout-athena);
+        @apply(--layout-horizontal);
+      }
+
+      paper-card {
+        @apply(--layout-vertical);
+        @apply(--layout-flex);
+        @apply(--layout-wrap);
+        @apply(--things-layout-athena-container);
+        --paper-card-header-text: {
+          font-size: 14px;
+          @apply(--things-detail-header-text);
+        };
+        background-color:transparent;
+      }
+
+      .container {
+        @apply(--things-layout-athena);
+        @apply(--layout-flex);
+        @apply(--layout-horizontal);
+      }
+
+      .detail-flex {
+        @apply(--layout-flex);
+      }
+
+      .layout-content {
+        @apply(--layout-flex);
+        @apply(--layout-vertical);
+        overflow: auto;
+      }
+
+      .card-actions {
+        @apply(--layout-horizontal-reverse);
+      }
+
+      #left {
+        @apply(--layout-flex);
+        @apply(--layout-vertical);
+        @apply(--things-layout-athena-left);
+      }
+
+      #right {
+        @apply(--layout-flex);
+        @apply(--layout-vertical);
+        @apply(--things-layout-athena-right);
+      }
+
+      #right-top {
+        @apply(--layout-flex-4);
+        @apply(--things-layout-athena-right-top);
+      }
+
+      #right-bottom {
+        @apply(--layout-flex-3);
+        @apply(--things-layout-athena-right-bottom);
+      }
+
+      paper-card::shadow .title-text:before {
+        content: '';
+        @apply(--things-subtitle-icon);
+      }
+
+      paper-card::shadow .title-text {
+        @apply(--things-default-padding);
+        padding-bottom:7px;
+        @apply(--things-subtitle);
+        padding-left:0 !important;
+      }      
+    </style>
+
+    <div class ="container">
+      <!-- left -->
+      <paper-card id="left" 
+        heading="[[leftContentTitle]]" 
+        elevation="0" 
+        animated-shadow="false">
+        <div id="leftContent" class="layout-content">
+          <content select="[left]"></content>
+        </div>
+      </paper-card>
+
+      <!-- right -->
+      <div id="right">
+        <!-- top -->
+        <paper-card id="right-top" 
+          heading="[[rightTopContentTitle]]" 
+          elevation="0" 
+          animated-shadow="false">
+          <div id="rightTopContent" class="layout-content">
+            <content select="[right-top]"></content>
+          </div>
+        </paper-card>
+
+        <!-- bottom -->
+        <paper-card id="right-bottom" 
+          heading="[[rightBottomContentTitle]]" 
+          elevation="0" 
+          animated-shadow="false">
+          <div id="rightBottomContent" class="layout-content">
+            <content select="[right-bottom]"></content>
+          </div>
+        </paper-card>
+      </div>
+    </div>
+  </template>
+
+  <script>
+  Polymer({
+    is: 'things-layout-athena',
+
+    behaviors: [
+      Things.LayoutBehavior
+    ],
+
+    properties: {
+      /**
+       * Title Of Left Content
+       */
+      leftContentTitle: {
+        type: String,
+        value: 'leftContent'
+      },
+
+      /**
+       * Title Of Right Top Content
+       */
+      rightTopContentTitle: {
+        type: String,
+        value: 'rightTopContent'
+      },
+
+      /**
+       * Title Of Right Bottom Content
+       */
+      rightBottomContentTitle: {
+        type: String,
+        value: 'right-bottom'
+      }
+    }
+  });
+  </script>
+</dom-module>

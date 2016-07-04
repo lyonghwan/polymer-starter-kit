@@ -1,0 +1,266 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../../bower_components/iron-icon/iron-icon.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../../bower_components/things-resource-selector/things-resource-selector-behavior.html">
+<link rel="import" href="../../../bower_components/things-view-open-behavior/things-view-open-behavior.html">
+<link rel="import" href="../../../bower_components/things-grid/things-resource-grid.html">
+<link rel="import" href="../../../bower_components/things-msg-box-behavior/things-msg-box-behavior.html">
+<link rel="import" href="../../../bower_components/things-global-behavior/things-global-behavior.html">
+
+<dom-module id="things-base-storage-detail">
+  <template>
+    <style>
+      :host {
+        display: block;
+        @apply(--layout-vertical);
+      }
+      #layout-flex {
+        @apply(--layout-flex);
+        @apply(--layout-vertical);
+      }
+      things-resource-grid {
+        @apply(--layout-flex);
+      }
+    </style>
+
+    <div id="layout-flex">
+      <things-ajax 
+        auto
+        id="resource-search"
+        resource-url="[[resourceUrl]]"
+        resource-id="[[resourceId]]"
+        resource-action="index"
+        select-fields="[[selectFields]]"
+        sort-fields="[[sortFields]]"
+        query-fields="{{queryFields}}"
+        page="[[page]]"
+        limit="[[limit]]"
+        last-response="{{lastResponse}}">
+      </things-ajax>
+
+      <things-resource-grid 
+        id="grid"
+        config="[[gridConfig]]"
+        model="[[gridModel]]" 
+        columns="[[gridColumns]]"
+        data="[[lastResponse.items]]"
+        total-count="[[lastResponse.total]]"
+        current-page="{{page}}"
+        per-page="[[limit]]"
+        buttons="[[buttons]]"
+        enable-detail-column
+        paginatable>
+      </things-resource-grid>
+    </div>
+  </template>
+
+  <script>
+    Polymer({
+
+      is: 'things-base-storage-detail',
+
+      behaviors: [
+        Things.GlobalBehavior,
+        Things.MsgBoxBehavior,
+        Things.ViewOpenBehavior
+      ],
+
+      properties: {
+        /**
+         * 화면 타이틀 
+         */
+        title: {
+          type: String
+        },
+
+        /**
+         * 첨부 파일 조회 정보 
+         */
+        lastResponse: {
+          type: Object
+        },
+
+        /**
+         * 버튼 
+         */
+        buttons: {
+          type: Array,
+          value: []
+        },
+
+        /**
+         * grid search fields
+         */
+        selectFields: {
+          type: String,
+          value: 'id,name,description,storage_info_id,on_type,on_id,tag,path,creator,created_at'
+        },
+
+        /**
+         * grid sort fields
+         */
+        sortFields: {
+          type: Array,
+          value: [ {
+            field : 'created_at',
+            ascending : false
+          } ]
+        },
+
+        /**
+         * grid query fields
+         */
+        queryFields: {
+          type: Array,
+          value: [ {
+            name: 'storage_info_id',
+            operator: 'eq',
+            value: null
+          } ],
+          notify: true
+        },
+
+        /**
+         * grid model
+         */
+        gridModel: {
+          type: Array,
+          value: [ { 
+            fieldName: 'id' 
+          }, { 
+            fieldName: 'name' 
+          }, { 
+            fieldName: 'tag' 
+          }, { 
+            fieldName: 'path'
+          }, { 
+            fieldName: 'created_at' 
+          } ]
+        },
+        
+        /**
+         * grid columns
+         */
+        gridColumns: {
+          type: Array,
+          value: []
+        },
+
+        /**
+         * Resource URL
+         */
+        resourceUrl: {
+          type: String,
+          value: 'attachments/:id',
+        },
+
+        /**
+         * Resource Id
+         */
+        resourceId: {
+          type: String
+        },
+
+        /**
+         * Current Page
+         */
+        page: {
+          type: Number,
+          value: 1,
+          observer: 'reloadGrid'
+        },
+
+        /**
+         * Limit
+         */
+        limit: {
+          type: Number,
+          value: 50
+        }
+      },
+
+      listeners : {
+        'grid.things-grid-detail-tap': '_downloadFile'
+      },
+
+      attached:function () {
+         this.gridColumns = [ { 
+            name: 'id',
+            fieldName: 'id', width: 0 
+          }, { 
+            name: 'name',
+            fieldName: 'name',
+            width: 220,
+            header: { 
+              text: Things.DataGlobal.t('label.name')
+            }
+          }, { 
+            name: 'tag',
+            fieldName: 'tag',
+            width: 150,
+            header: { 
+              text: Things.DataGlobal.t('label.tag')
+            }
+          }, { 
+            name: 'path',
+            fieldName: 'path',
+            width: 450,
+            header: { 
+              text: Things.DataGlobal.t('label.path')
+            }
+          }, { 
+            name: 'created_at',
+            fieldName: 'created_at', 
+            width: 135,
+            header: { 
+              text: Things.DataGlobal.t('label.created_at')
+            }
+          } ] 
+      },
+      /**
+       * 그리드 셀 선택이 변경되었을 경우 파일 다운로드  
+       */
+      _downloadFile: function(e) {
+        var baseUrl = this.get('globals.baseUrl');
+        this.openConfirmMsg({
+          type : 'info',
+          title : Things.DataGlobal.t('text.Want to download file'),
+          text : Things.DataGlobal.t('text.You can download file'),
+          showCancelButton: true
+        }, function() {
+          window.location = baseUrl + '/download/' + e.detail.id;
+        });
+      },
+
+      /**
+       * reload grid data
+       */
+      reloadGrid: function(e) {
+        if(!this.resource || !this.resource.id) return;
+
+        this.queryFields = [ {
+          name: 'storage_info_id',
+          operator: 'eq',
+          value: this.resource.id
+        } ];
+        this.$['resource-search'].generateRequest();
+      },
+
+      /**
+       * Detail 화면 Open
+       *
+       * @param {String} resourceId
+       * @param {Object} resource
+       */
+      showDetailView: function(resourceId, resource) {
+        if(this.resourceId != resourceId) {
+          this.resourceId = resourceId;
+        }
+
+        this.openPopupView(this, true);
+      }
+
+    });
+  </script>
+</dom-module>

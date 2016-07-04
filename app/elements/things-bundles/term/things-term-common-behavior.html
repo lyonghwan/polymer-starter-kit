@@ -1,0 +1,52 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../../bower_components/things-global-behavior/things-global-behavior.html">
+<link rel="import" href="../../../bower_components/things-msg-box-behavior/things-msg-box-behavior.html">
+
+<script>
+
+window.Things = window.Things || {};
+
+/**
+ * OI 공통 Behavior
+ *
+ * @polymerBehavior Things.TermCommonBehavior
+ */
+Things.TermCommonBehaviorImpl = {
+
+	/**
+ 	 * Key Enter Event
+	 *
+	 * @param {Object} event
+	 */
+	handleKeyPress: function(event) {
+		var code = event.keyCode;
+		if(code == 13) {
+			this.validateLot();
+		}
+	},
+
+	/**
+ 	 * 트랜잭션 에러시 
+	 *
+	 * @param {Object} event
+	 */
+	checkTransactionResponse: function(event) {
+		var response = event.detail;
+
+		if(response.error_id) {
+			this.openInfoMsg({ title : response.error_id, text : response.msg, type : 'info', timer : 10000 });
+			return false;
+		} else {
+			return true;
+		}
+	}
+};
+
+Things.TermCommonBehavior = [
+	Things.TermCommonBehaviorImpl,
+	Things.MsgBoxBehavior,
+	Things.GlobalBehavior
+];
+
+</script>

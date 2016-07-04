@@ -1,0 +1,104 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../bower_components/things-global-behavior/things-global-behavior.html">
+<link rel="import" href="../../bower_components/things-meta/things-menu-meta-behavior.html">
+<link rel="import" href="../../bower_components/things-msg-box-behavior/things-msg-box-behavior.html">
+<link rel="import" href="../../bower_components/things-view-open-behavior/things-view-open-behavior.html">
+
+<link rel="import" href="./things-diy-based-grid-meta-behavior.html">
+
+<script>
+
+window.Things = window.Things || {};
+
+/**
+ * 리소스 타입 DiyGrid 기반 그리드 화면 Behavior
+ *
+ * @polymerBehavior Things.DiyBasedGridBehavior
+ */
+Things.DiyBasedGridBehaviorImpl = {
+
+	properties: {
+		/**
+		 * 조회 결과 
+		 */
+		diyGrid: {
+			type: Object,
+			observer: '_diyGridChanged'
+		},
+
+		/**
+		 * 조회 결과 리스트 데이터
+		 */
+		items: {
+			type: Array
+		},
+
+		/**
+		 * 조회 결과 레코드 수  
+		 */
+		itemCount: {
+			type: Number
+		},
+
+		/**
+		 * Detail 버튼을 활성화 시킬 지 여부
+		 */
+		enableDetailColumn: {
+			type: Boolean,
+			value: false
+		},
+
+		/**
+		 * 그리드 Height
+		 * -1이면 layout flex가 적용되고 -1이 아니면 설정된 gridHeight가 적용됨 
+		 */
+		gridHeight: {
+			type: Number,
+			notify: true,
+			value: -1
+		}
+	},
+
+	/**
+	 * Resource Grid를 리턴한다.
+	 */
+	getResourceGrid: function() {
+		return this.$.grid;
+	},
+
+	/**
+	 * ID Field를 리턴한다.
+	 */
+	getIdField: function() {
+		return (this.diyGrid && this.diyGrid.id_field) ? this.diyGrid.id_field : 'id';
+	},
+
+	/**
+	 * Title Field를 리턴한다.
+	 */
+	getTitleField: function() {
+		return (this.diyGrid && this.diyGrid.title_field) ? this.diyGrid.title_field : 'name';
+	},
+
+	/**
+	 * 메뉴 메타데이터 변경시
+   *
+	 * @param {Object} diyGrid
+	 */
+	_diyGridChanged: function(diyGrid) {
+		if(diyGrid) {
+			this.diyGridId = diyGrid.id;
+		}
+	}
+};
+
+Things.DiyBasedGridBehavior = [
+	Things.DiyBasedGridBehaviorImpl,
+	Things.DiyBasedGridMetaBehavior,
+	Things.ViewOpenBehavior,
+	Things.MsgBoxBehavior,
+	Things.GlobalBehavior
+];
+
+</script>

@@ -1,0 +1,38 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../../bower_components/paper-icon-button/paper-icon-button.html">
+
+<!--
+OI 이동 버튼
+-->
+
+<dom-module id="things-oi-entrance">
+  <template>
+    <style>
+      paper-icon-button{
+        @apply(--things-small-icon);
+        float:right;
+        margin-top:1px;margin-left:3px;
+      }
+    </style>
+
+    <paper-icon-button icon="icons:launch" id="oi-entrance" on-tap="moveToOI"></paper-icon-button>
+    <paper-tooltip for="oi-entrance" offset="0">
+      <things-i18n-msg msgid="label.move_to_oi" auto>Move To OI</things-i18n-msg>
+    </paper-tooltip>
+  </template>
+
+  <script>
+    Polymer({
+      is: 'things-oi-entrance',
+
+      /**
+       * 버튼 클릭시 ...
+       */
+      moveToOI: function() {
+        document.location = '/index_io.html';
+      }
+
+    });
+  </script>
+</dom-module>

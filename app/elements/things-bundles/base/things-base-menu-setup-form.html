@@ -1,0 +1,342 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../../bower_components/iron-icon/iron-icon.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../../bower_components/things-resource-selector/things-resource-selector-behavior.html">
+<link rel="import" href="../../../bower_components/things-view-open-behavior/things-view-open-behavior.html">
+<link rel="import" href="../../../bower_components/things-grid/things-resource-grid.html">
+
+<dom-module id="things-base-menu-setup-form">
+  <template>
+    <style>
+      :host {
+        display:block;
+        @apply(--layout-vertical);
+      }
+      things-resource-grid {
+        @apply(--layout-flex);
+      }
+    </style>
+
+    <things-ajax 
+      id="column-ajax"
+      method="GET"
+      resource-url="menus/:id/menu_meta?no_trans_term=true"
+      resource-id="[[resourceId]]"
+      last-response="{{menuMeta}}">
+    </things-ajax>
+
+    <things-resource-grid 
+      id="grid"
+      config="[[gridConfig]]"
+      model="[[gridModel]]" 
+      columns="[[gridColumns]]"
+      data="[[items]]"
+      grid-save-action="[[gridSaveUrl]]"
+      buttons="[[buttons]]">
+    </things-resource-grid>
+  </template>
+
+  <script>
+    Polymer({
+
+      is: 'things-base-menu-setup-form',
+
+      properties: {
+
+        /**
+         * Menu Id
+         */
+        resourceId: {
+          type: String
+        },
+
+        /**
+         * Menu Data
+         */
+        resource: {
+          type: Object
+        },
+
+        /**
+         * Menu Meta Data
+         * 데이터 형식 : { menu : Object, buttons: Array, columns: Array }
+         */
+        menuMeta: {
+          type: Object,
+          notify: true,
+          observer: '_onMenuMetaChanged'
+        },        
+
+        /**
+         * Menu columns 조회 정보 
+         */
+        items: {
+          type: Array
+        },        
+
+        /**
+         * Grid Model
+         */
+        gridModel: {
+          type: Array,
+          value: [ { 
+            fieldName: 'id' 
+          }, { 
+            fieldName: 'menu_id' 
+          }, { 
+            fieldName: 'rank' 
+          }, { 
+            fieldName: 'name' 
+          }, { 
+            fieldName: 'term'
+          }, { 
+            fieldName: 'col_type'
+          }, { 
+            fieldName: 'uniq_rank'
+          }, { 
+            fieldName: 'form_editor'
+          }, { 
+            fieldName: 'form_validator'
+          }, { 
+            fieldName: 'form_format'
+          }, { 
+            fieldName: 'def_val'
+          }, { 
+            fieldName: 'ignore_on_save'
+          } ]
+        },
+        
+        /**
+         * Grid Columns
+         */
+        gridColumns: {
+          type: Array,
+          value: function() {
+            return this.formColumnList();
+          }
+        },
+
+        /**
+         * Detail Form Column Save URL
+         */
+        gridSaveUrl: {
+          type: String,
+          computed: '_computeColumnSaveUrl(resourceId)'
+        },
+
+        /**
+         * 버튼 정보 
+         */
+        buttons: {
+          type: Array,
+          value: [ {
+            id: 'save-btn',
+            text: 'save',
+            icon: 'icons:save'
+          } ]
+        }
+      },
+
+      listeners: {
+        'things-detail-view-selected' : '_detailTabSelected',
+        'grid.things-grid-handle-save' : '_beforeSearchColumnSave',
+        'grid.things-grid-save-success' : '_reloadGrid',
+        'column-ajax.things-ajax-response': '_afterColumnsLoaded'
+      },
+
+      /**
+       * 상세 탭 선택시 ...
+       */
+      _detailTabSelected: function(e) {
+        this.$.grid.resizeGrid();
+      },
+
+      /**
+       * Form Column List
+       */
+      formColumnList: function() {
+        var validators = document.querySelector('#validators').allValidators();
+        var colTypes = [
+          '', 'binary', 'boolean', 'date', 'datetime','decimal','double', 
+          'float', 'integer', 'long', 'string', 'text', 'time', 'timestamp'
+        ];
+        var editors = [
+          '', 'hidden', 'readonly', 'checkbox', 'text', 'code-combo', 'number',
+          'textarea', 'resource-field', 'resource-selector', 'date-picker', 
+          'time-picker', 'datetime-picker', 'tristate-radio'
+        ];
+
+        return [ { 
+            fieldName: 'id', name: 'id', width: 0 
+          }, { 
+            fieldName: 'menu_id', name: 'menu_id', width: 0 
+          }, { 
+            fieldName: 'rank', name: 'rank', width: 60, type: 'number',
+            header: { 
+              text: Things.DataGlobal.t('label.rank')
+            },
+            styles: { 
+              textAlignment: 'far' 
+            }
+          }, { 
+            fieldName: 'name', name: 'name', width: 135,
+            header: { 
+              text: Things.DataGlobal.t('label.name')
+            }
+          }, { 
+            fieldName: 'term', name: 'term', width: 135,
+            header: { 
+              text: Things.DataGlobal.t('label.term')
+            },
+            valueType: 'text', type: 'calced',
+            valueCallback: function(column, row) {
+              var term = row.getValue('term');
+              return term ? Things.DataGlobal.t(term) : '';
+            }
+          }, { 
+            name: 'col_type', 
+            fieldName: 'col_type', 
+            width: 100,
+            lookupDisplay: true,
+            header: { 
+              text: Things.DataGlobal.t('label.col_type') 
+            },
+            editor: { 
+              type: 'list', 
+              domainOnly: true 
+            },
+            lookupValues: colTypes,
+            lookupLabels: colTypes
+          }, { 
+            name: 'form_editor', 
+            fieldName: 'form_editor', 
+            width: 150,
+            lookupDisplay: true,
+            header: { 
+              text: Things.DataGlobal.t('label.editor') 
+            },
+            editor: { 
+              type: 'list', 
+              domainOnly: true 
+            },
+            lookupValues: editors,
+            lookupLabels: editors
+          }, { 
+            name: 'form_validator', 
+            fieldName: 'form_validator', 
+            width: 120,
+            lookupDisplay: true,
+            lookupValues: validators,
+            lookupLabels: validators,
+            header: { 
+              text: Things.DataGlobal.t('label.validator') 
+            },
+            editor: { 
+              type: 'list', 
+              domainOnly: true 
+            }          
+          }, { 
+            fieldName: 'form_format', name: 'form_format', width: 125,
+            header: {
+              text: Things.DataGlobal.t('label.format')
+           }
+          }, { 
+            fieldName: 'uniq_rank', name: 'uniq_rank', width: 80, type: 'number',
+            header: { 
+              text: Things.DataGlobal.t('label.uniq_rank')
+            },
+            styles: { 
+              textAlignment: 'far' 
+            }
+          }, { 
+            fieldName: 'def_val', name: 'def_val', width: 100,
+            header: {
+              text: Things.DataGlobal.t('label.def_val')
+           }
+          }, { 
+            fieldName: 'ignore_on_save', name: 'ignore_on_save', width: 130, editable: false,
+            header: {
+              text: Things.DataGlobal.t('label.ignore_on_save')
+            },
+            renderer: {
+              type:'check', 
+              editable: true, 
+              threeStates: false, 
+              trueValues: 'true', 
+              falseValues: 'false'
+            }
+          } ];
+      },
+
+      /**
+       * MenuMeta 변경시
+       *
+       * @param {Object} menuMeta
+       */
+      _onMenuMetaChanged: function(menuMeta) {
+        if(!menuMeta || !menuMeta.columns || menuMeta.columns.length == 0) {
+          this.items = [];
+        } else {
+          var items = menuMeta.columns.filter(function(column) { return !column.virtual_field; });
+          this._sortColumns(items, 'rank')
+          this.items = items;
+        }
+      },
+
+      /**
+       * list sorting
+       */
+      _sortColumns: function(list, sortField) {
+        list.sort(function(a, b) {
+          return (a[sortField] > b[sortField]) ? 1 : ((b[sortField] > a[sortField]) ? -1 : 0);
+        });
+      },
+
+      /**
+       * Detail Form Column Save URL
+       *
+       * @param {String} resourceId
+       * @return {String} Detail Form Column Save URL
+       */
+      _computeColumnSaveUrl: function(resourceId) {
+        return 'menus/' + resourceId + '/menu_columns/update_multiple';
+      },
+
+      /**
+       * Detail Form Column 저장 전
+       *
+       * @param {Object} event menu-meta 저장 전 이벤트 
+       */
+      _beforeSearchColumnSave: function(event) {
+        var grid = event.target;
+        if(grid.writeData && grid.writeData.length > 0) {
+          var resourceId = this.resourceId;
+          grid.writeData.forEach(function(changedData) {
+            delete changedData['term'];
+            if(changedData.cud_flag_ == 'c') {
+              changedData.menu_id = resourceId;
+            }
+          });
+        }
+      },
+
+      /**
+       * Reload Grid Data
+       */
+      _reloadGrid: function(e) {
+        this.$['column-ajax'].generateRequest();
+      },
+
+      /**
+       * Menu Meta Data 조회 후 
+       *
+       * @param {Object} event 
+       */
+      _afterColumnsLoaded: function(event) {
+        this.menuMeta = event.detail;
+      }      
+
+    });
+  </script>
+</dom-module>

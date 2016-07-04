@@ -1,0 +1,112 @@
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../../bower_components/iron-icon/iron-icon.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+<link rel="import" href="../../../bower_components/things-resource-selector/things-resource-selector-behavior.html">
+<link rel="import" href="../../../bower_components/things-view-open-behavior/things-view-open-behavior.html">
+<link rel="import" href="../../../bower_components/things-grid/things-basic-grid.html">
+
+<dom-module id="things-base-rest-detail-api-inout">
+  <template>
+    <style>
+      :host {
+        display: block;
+        @apply(--layout-vertical)
+        @apply(--layout-flex)
+      }
+    </style>
+
+    <things-basic-grid 
+      id="grid"
+      class="flex"
+      config="[[gridConfig]]"
+      model="[[gridModel]]" 
+      columns="[[gridColumns]]"
+      data="[[items]]">
+    </things-basic-grid>
+  </template>
+
+  <script>
+    Polymer({
+
+      is: 'things-base-rest-detail-api-inout',
+
+      properties: {
+
+        /**
+         * entity resource
+         */
+        resource: {
+          type: Object,
+          observer: '_resourceChanged'
+        },
+
+        /**
+         * entity columns 조회 정보 
+         */
+        items: {
+          type: Array
+        },        
+
+        /**
+         * in / out
+         */
+        mode: {
+          type: String
+        },
+
+        /**
+         * grid model
+         */
+        gridModel: {
+          type: Array,
+          value: [ { 
+            fieldName: 'name' 
+          }, { 
+            fieldName: 'type' 
+          } ]
+        },
+        
+        /**
+         * grid columns
+         */
+        gridColumns: {
+          type: Array,
+          value: [ { 
+            fieldName: 'name', name: 'name', width: 200,
+            header: { text : 'Name' }
+          }, { 
+            fieldName: 'type', name: 'type', width: 180,
+            header: { text : 'Type' }
+          } ] 
+        }
+      },
+
+      /**
+       * API 데이터 변경시
+       *
+       * @return {Object} API 데이터
+       */
+      _resourceChanged: function(resource) {
+        this.resource = resource;
+        this.items = [];
+        if(resource) {
+          this.items = (this.mode == 'in') ? this.resource.input_type_list : this.resource.output_type_list;
+        }
+      },
+
+      /**
+       * detail item view를 구성하기 위한 필수 함수 
+       * item view를 구성한다.
+       *
+       * @return {Object} resource 리소스 데이터 (Object) 혹은 리소스 아이디 (Number)
+       */
+      loadDetailData: function(resource) {
+        if(resource) {
+          this.resource = resource;
+        }
+      }
+
+    });
+  </script>
+</dom-module>

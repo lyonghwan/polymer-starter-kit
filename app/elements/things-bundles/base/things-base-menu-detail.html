@@ -1,0 +1,234 @@
+
+<link rel="import" href="../../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../../bower_components/paper-card/paper-card.html">
+
+<link rel="import" href="../../../bower_components/things-ajax/things-ajax.html">
+
+<link rel="import" href="./things-base-menu-detail-buttons.html">
+<link rel="import" href="./things-base-menu-detail-columns.html">
+<link rel="import" href="./things-base-menu-detail-main.html">
+
+<!--
+메뉴 셋업 뷰 - 좌/우 분할 & 우측 상하 분할 레이아웃
+-->
+
+<dom-module id="things-base-menu-detail">
+  <template>
+    <style>
+      :host {
+        display: inline-block;
+        @apply(--things-base-menu-detail);
+        @apply(--layout-horizontal);
+      }
+
+      paper-card {
+        @apply(--layout-vertical);
+        @apply(--layout-flex);
+        @apply(--layout-wrap);
+        @apply(--things-base-menu-detail-container);
+        --paper-card-header-text: {
+          font-size: 14px;
+          @apply(--things-detail-header-text);
+        };
+      }
+
+      .container {
+        @apply(--things-base-menu-detail);
+        @apply(--layout-flex);
+        @apply(--layout-horizontal);
+      }
+
+      .detail-flex {
+        @apply(--layout-flex);
+      }
+
+      .layout-content {
+        @apply(--layout-flex);
+        @apply(--layout-vertical);
+      }
+
+      .card-actions {
+        @apply(--layout-horizontal-reverse);
+      }
+
+      #left {
+        @apply(--layout-flex);
+        @apply(--layout-vertical);
+        @apply(--things-base-menu-detail-left);
+      }
+
+      #left-top {
+        @apply(--layout-flex-4);
+        @apply(--things-base-menu-detail-right-top);
+      }
+
+      #left-bottom {
+        @apply(--layout-flex-3);
+        @apply(--things-base-menu-detail-right-bottom);
+      }
+
+      #right {
+        @apply(--layout-flex);
+        @apply(--layout-vertical);
+        @apply(--things-base-menu-detail-right);
+      }      
+
+      .subtitle:before {
+        content: '';
+        @apply(--things-subtitle-icon);
+      }
+
+      .subtitle {
+        @apply(--things-default-padding);
+        padding-bottom:7px;
+        @apply(--things-subtitle);
+      }      
+    </style>
+
+    <things-ajax 
+      auto
+      id="get-resource"
+      method="GET"
+      resource-url="[[menuDetailsUrl]]"
+      last-response="{{menuDetails}}">
+    </things-ajax>
+
+    <div class ="container">
+      <!-- left -->
+      <div id="left">
+        <!-- top -->
+        <paper-card id="left-top" 
+          heading="[[leftTopContentTitle]]" 
+          elevation="1" 
+          animated-shadow="false">
+          <things-base-menu-detail-main
+            class="detail-flex"
+            resource-id="[[resourceId]]"
+            menu-detail-id="{{menuDetailId}}"
+            menu-details="{{menuDetails}}">
+          </things-base-menu-detail-main>
+        </paper-card>
+
+        <!-- bottom -->
+        <paper-card id="left-bottom" 
+          heading="[[leftBottomContentTitle]]" 
+          elevation="1" 
+          animated-shadow="false">
+          <things-base-menu-detail-buttons
+            class="detail-flex"
+            resource-id="{{menuDetailId}}">
+          </things-base-menu-detail-buttons>            
+        </paper-card>        
+      </div>
+
+      <!-- right -->
+      <paper-card id="right" 
+        heading="[[rightContentTitle]]" 
+        elevation="1" 
+        animated-shadow="false">
+        <things-base-menu-detail-columns
+          class="detail-flex"
+          resource-id="{{menuDetailId}}">
+        </things-base-menu-detail-columns>
+      </paper-card>
+    </div>
+  </template>
+
+  <script>
+  Polymer({
+    is: 'things-base-menu-detail',
+
+    behaviors: [
+      Things.ViewOpenBehavior
+    ],
+
+    properties: {
+      /**
+       * Title Of This Content
+       */
+      title: {
+        type: String
+      },
+
+      /**
+       * Title Of Left Top Content
+       */
+      leftTopContentTitle: {
+        type: String,
+        value: 'Menu Details'
+      },
+
+      /**
+       * Title Of Left Bottom Content
+       */
+      leftBottomContentTitle: {
+        type: String,
+        value: 'Menu Detail Buttons'
+      },      
+
+      /**
+       * Title Of Right Content
+       */
+      rightContentTitle: {
+        type: String,
+        value: 'Menu Detail Columns'
+      },
+
+      /**
+       * Resource ID
+       */
+      resourceId: {
+        type: String
+      },
+
+      /**
+       * Menu Details URL
+       */
+      menuDetailsUrl: {
+        type: String,
+        computed: '_computeMenuDetailsUrl(resourceId)'
+      },
+
+      /**
+       * Menu Detail ID
+       */
+      menuDetailId: {
+        type: String,
+        notify: true
+      },
+
+      /**
+       * Menu Details
+       */
+      menuDetails: {
+        type: Object
+      }
+    },
+
+    /**
+     * Menu Details를 찾기 위한 URL
+     *
+     * @param {String} menuId
+     */
+    _computeMenuDetailsUrl: function(menuId) {
+      var query = JSON.stringify([{name: 'menu_id', value: menuId}]);
+      return 'menu_details?query=' + query;
+    },
+
+    /**
+     * Detail 화면을 오픈한다.
+     *
+     * @param {String} resourceId
+     * @param {Object} resource
+     */
+    showDetailView: function(resourceId, resource) {
+      if(this.resourceId != resourceId) {
+        this.resourceId = resourceId;
+      }
+
+      this.openPopupView(this, true);
+    }
+
+  });
+  </script>
+</dom-module>

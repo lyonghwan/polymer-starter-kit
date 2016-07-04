@@ -1,0 +1,112 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../bower_components/paper-card/paper-card.html">
+
+<link rel="import" href="./things-layout-behavior.html">
+
+<!--
+  좌우 1:1 분할 좌단 상하 분할 레이아웃
+-->
+
+<dom-module id="things-layout-mercury">
+  <template>
+    <style>
+      :host {
+        display: inline-block;
+        @apply(--layout-horizontal);
+        margin-top:20px;
+      }
+      paper-card {
+        background-color:transparent;
+      }
+      #left {
+        @apply(--layout-flex);
+        @apply(--layout-vertical);
+        margin-right:15px;
+      }
+
+      #leftTop {
+        margin-bottom:15px;
+      }
+
+      #leftBottom {
+        @apply(--layout-flex);
+        @apply(--layout-vertical); 
+      }
+
+      #right {
+        @apply(--layout-flex);
+        @apply(--layout-vertical);
+      }
+      
+      .layout-content {
+        @apply(--layout-flex);
+        @apply(--layout-vertical);
+      } 
+
+      .subtitle:before {
+        content: '';
+        @apply(--things-subtitle-icon);
+      }
+
+      .subtitle {
+        @apply(--things-default-padding);
+        @apply(--things-subtitle);
+      }    
+    </style>
+
+    <!-- left -->
+    <div id="left">
+      <!-- top left -->
+      <paper-card id="leftTop" elevation="0">
+        <span class="subtitle">[[leftTopContentTitle]]</span>
+        <div id="topLeftContent">
+          <content select="[left-top]"></content>
+        </div>
+      </paper-card>
+
+      <!-- bottom left -->
+      <paper-card id="leftBottom" elevation="0">
+        <span class="subtitle">[[leftBottomContentTitle]]</span>
+        <div id="bottomLeftContent" class="layout-content">
+          <content select="[left-bottom]"></content>
+        </div>
+      </paper-card>
+    </div>
+
+    <!-- right -->
+    <div id="right">
+      <span class="subtitle">[[rightContentTitle]]</span>
+      <div id="rightContent" class="layout-content">
+        <content select="[right]"></content>
+      </div>
+    </div>
+  </template>
+
+  <script>
+  Polymer({
+    is: 'things-layout-mercury',
+
+    behaviors: [
+      Things.LayoutBehavior
+    ],
+    
+    properties: {
+      
+      leftTopContentTitle: {
+        type: String,
+        value: 'topLeftContent'
+      },
+
+      leftBottomContentTitle: {
+        type: String,
+        value: 'bottomLeftContent'
+      },
+      
+      rightContentTitle: {
+        type: String,
+        value: 'rightContent'
+      }
+    }
+  });
+  </script>
+</dom-module>

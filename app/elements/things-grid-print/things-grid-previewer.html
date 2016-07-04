@@ -1,0 +1,54 @@
+
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <style type="text/css">
+        #loader{
+            position: fixed;
+            left: 0px;
+            top: 0px;
+            width: 100%;
+            height: 100%;
+            z-index: 9999;
+            background: url('print-loader.gif') 50% 50% no-repeat rgb(249,249,249);
+        }
+    </style>
+    <script type="text/javascript" src="../../bower_components/things-grid-behavior/dataludi-report.min.js"></script>
+    <script type="text/javascript">
+        var loaded;
+        var pvMain;
+        var grdSource;
+        var options;
+
+        function load() {
+            DataLudi.setRootContext('images/grid')
+            DataLudi.setDebug(true);
+            DataLudi.setTrace(true);
+
+            pvMain = DLReport.createPrintPreviewer('container');
+            pvMain.setFocus();
+            loaded = true;
+        }
+
+        function preview(grid, model, data, options, print) {
+            if (!loaded) {
+                setTimeout(function () {
+                    preview(grid, model, data, options, print);
+                }, 0);
+            } else {
+                pvMain.setModel(model);
+                pvMain.loadData(data);
+                pvMain.setPrintOptions(options);
+                pvMain.preview(grid, print, function () {
+                    document.getElementById('loader').style.visibility = "collapse";
+                });
+            }
+        }
+    </script>
+</head>
+<body style="margin:0;padding:0" onload="load();">
+<div id="loader"></div>
+<div id="container" style="height:0px;"></div>
+</body>
+</html>
