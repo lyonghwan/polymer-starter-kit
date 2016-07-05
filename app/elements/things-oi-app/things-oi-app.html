@@ -168,7 +168,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       </app-drawer>
 
       <app-header-layout id="contentArea">
-        <app-header>
+        <app-header id="appHeader">
           <app-toolbar>
             <paper-icon-button icon="menu" drawer-toggle></paper-icon-button>            
             <span title class="title">[[selectedMenu.pageName]]</span>
@@ -254,7 +254,20 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           </iron-collapse>
 
           <iron-pages attr-for-selected="data-route" selected="{{route}}" id="_content_">
-            <div class ="layout flex"></div>
+            <things-login 
+              data-route="login"
+              class="flex"
+              route ="{{route}}"
+              title="Things"
+              login-path="login"
+              content-type="application/x-www-form-urlencoded"
+              success-route="/"
+              username-input-label="ID"
+              password-input-label="Password"
+              submit-label = "sign_up"
+              Reset-label = "Reset">
+              <img avatar src="https://maps.gstatic.com/tactile/pane/default_geocode-1x.png"/>
+            </things-login>
           </iron-pages>
         </div>   
       </app-header-layout>

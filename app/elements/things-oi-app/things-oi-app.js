@@ -28,6 +28,11 @@ Polymer({
         document.addEventListener('things-show-tost', function(e) {
             this.showToast(e.detail.msg);
         }.bind(this));
+        document.addEventListener('things-unauthorized-session',function(e){
+            this.hideStep=2;
+            this.$.appHeader.hidden =true;
+            this._hideInfoContent()
+        }.bind(this))
     },
     /**
      * drawer를 찾아서 toggle full screen
